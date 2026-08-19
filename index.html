@@ -143,6 +143,19 @@
   .search-hint{
     margin-top:12px; font-size:12px; color: var(--ink-faint); display:flex; gap:6px; align-items:center;
   }
+
+  .manual-wrap{ margin-top:20px; padding-top:18px; border-top:1px solid var(--panel-border); }
+  .manual-label{ font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color: var(--ink-faint); font-weight:700; margin-bottom:4px; }
+  .manual-hint{ font-size:11.5px; color: var(--ink-faint); margin:0 0 12px; }
+  .manual-row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .manual-field label{ font-size:10.5px; color: var(--ink-faint); display:block; margin-bottom:6px; }
+  .manual-field input{
+    width:100%; background: rgba(255,255,255,0.03); border:1px solid var(--panel-border);
+    border-radius: var(--radius-sm); padding:11px 12px; color: var(--ink); font-size:14px;
+    font-family: var(--font-mono); outline:none; transition: border-color .15s ease;
+  }
+  .manual-field input:focus{ border-color: rgba(45,212,191,0.5); }
+  .manual-field input::placeholder{ color: var(--ink-faint); }
   .search-status{
     margin-top:20px; font-size:13px; border-radius: var(--radius-sm); padding:12px 14px; display:none;
     font-family: var(--font-mono);
@@ -150,6 +163,19 @@
   .search-status.show{ display:block; }
   .search-status.err{ background: rgba(230,99,107,0.1); color:#f4a1a6; border:1px solid rgba(230,99,107,0.3); }
   .search-status.new{ background: rgba(45,212,191,0.08); color:#8fe9dd; border:1px solid rgba(45,212,191,0.28); }
+
+  .summary-cards{ display:none; gap:12px; margin-top:20px; }
+  .summary-cards.show{ display:grid; grid-template-columns: 1fr 1fr; }
+  .summary-mini{
+    border-radius: var(--radius-sm); padding: 16px 14px; text-align:center;
+    border:1px solid var(--panel-border);
+  }
+  .summary-mini.total{ background: rgba(245,166,35,0.07); border-color: rgba(245,166,35,0.25); }
+  .summary-mini.media{ background: rgba(45,212,191,0.08); border-color: rgba(45,212,191,0.3); }
+  .summary-mini-label{ font-size:10px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; color: var(--ink-faint); margin:0 0 6px; }
+  .summary-mini-value{ font-family: var(--font-mono); font-size:26px; font-weight:800; }
+  .summary-mini.total .summary-mini-value{ color: var(--amber); }
+  .summary-mini.media .summary-mini-value{ color: var(--teal); }
 
   .recent{ margin-top:26px; padding-top:22px; border-top:1px solid var(--panel-border); }
   .recent-label{ font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color: var(--ink-faint); font-weight:700; margin-bottom:10px; }
@@ -359,7 +385,33 @@
         </div>
         <p class="search-hint">Pressione Enter para confirmar</p>
 
+        <div class="manual-wrap">
+          <p class="manual-label">Preencher manualmente (opcional)</p>
+          <p class="manual-hint">Se você já sabe esses números de outro lugar, informe aqui — o sistema passa a usar esses valores em vez de calcular a partir das avaliações.</p>
+          <div class="manual-row">
+            <div class="manual-field">
+              <label for="campo-total-manual">Total de avaliações</label>
+              <input type="number" id="campo-total-manual" min="0" step="1" placeholder="ex: 5">
+            </div>
+            <div class="manual-field">
+              <label for="campo-media-manual">Média geral (0 a 10)</label>
+              <input type="number" id="campo-media-manual" min="0" max="10" step="0.1" placeholder="ex: 9,6">
+            </div>
+          </div>
+        </div>
+
         <div class="search-status" id="search-status"></div>
+
+        <div class="summary-cards" id="summary-cards">
+          <div class="summary-mini total">
+            <p class="summary-mini-label">Total de avaliações</p>
+            <div class="summary-mini-value" id="summary-total">0</div>
+          </div>
+          <div class="summary-mini media">
+            <p class="summary-mini-label">Média geral</p>
+            <div class="summary-mini-value" id="summary-media">—</div>
+          </div>
+        </div>
 
         <div class="recent" id="recent-wrap" style="display:none;">
           <p class="recent-label">Consultados recentemente</p>
@@ -523,10 +575,20 @@
         nome: digits.length === 11 ? termo : termo.trim(),
         cargo: "Consultor de Vendas",
         foto: "",
+        totalManual: null,
+        mediaManual: null,
       };
       saveDB(DB);
     }
     return DB.vendedores[id];
+  }
+
+  function localAplicarManual(vendedorId, totalManual, mediaManual){
+    const v = DB.vendedores[vendedorId];
+    if(!v) return;
+    if(totalManual !== null) v.totalManual = totalManual;
+    if(mediaManual !== null) v.mediaManual = mediaManual;
+    saveDB(DB);
   }
 
   function localImportarLote(lista){
@@ -570,7 +632,13 @@
       const somaGeral = INDICADORES.reduce((acc,ind) => acc + (medias[ind.key]||0), 0);
       mediaGeral = somaGeral / INDICADORES.length;
     }
-    return { total, mediaGeral, medias };
+
+    const usaManual = vendedor.totalManual !== null && vendedor.totalManual !== undefined
+      && vendedor.mediaManual !== null && vendedor.mediaManual !== undefined;
+    if(usaManual){
+      return { total: vendedor.totalManual, mediaGeral: vendedor.mediaManual, medias, manual: true };
+    }
+    return { total, mediaGeral, medias, manual: false };
   }
 
   function localSalvarFoto(vendedorId, dataUrl){
@@ -599,18 +667,29 @@
       headers: { "Content-Type": "text/plain;charset=utf-8" }, // evita preflight no Apps Script
       body: JSON.stringify(Object.assign({ action }, payload)),
     });
-    return res.json();
+    const texto = await res.text();
+    let json;
+    try{
+      json = JSON.parse(texto);
+    }catch(e){
+      throw new Error("resposta inesperada do Apps Script: " + texto.slice(0, 200));
+    }
+    if(json && json.erro) throw new Error(json.erro);
+    return json;
   }
 
-  async function buscarVendedor(termo){
+  async function buscarVendedor(termo, manual){
     if(CONFIG.API_URL){
-      return apiCall("buscarVendedor", { termo });
+      return apiCall("buscarVendedor", { termo, manual });
     }
     let vendedor = localBuscar(termo);
     let novo = false;
     if(!vendedor){
       vendedor = localCriarOuAtualizarVendedor(termo);
       novo = true;
+    }
+    if(manual && (manual.total !== null || manual.media !== null)){
+      localAplicarManual(vendedor.id, manual.total, manual.media);
     }
     const resumo = localCalcularResumo(vendedor);
     return { vendedor, resumo, novo };
@@ -650,6 +729,13 @@
     searchStatus: document.getElementById("search-status"),
     recentWrap: document.getElementById("recent-wrap"),
     recentList: document.getElementById("recent-list"),
+
+    summaryCards: document.getElementById("summary-cards"),
+    summaryTotal: document.getElementById("summary-total"),
+    summaryMedia: document.getElementById("summary-media"),
+
+    campoTotalManual: document.getElementById("campo-total-manual"),
+    campoMediaManual: document.getElementById("campo-media-manual"),
 
     btnImportar: document.getElementById("btn-importar"),
     filePlanilha: document.getElementById("file-planilha"),
@@ -746,9 +832,11 @@
     el.resCpf.textContent = vendedor.cpf ? formatCpf(vendedor.cpf) : "CPF não informado";
 
     el.resTotal.textContent = resumo.total;
-    el.resTotalSub.textContent = resumo.total === 0
-      ? "nenhuma avaliação registrada"
-      : (resumo.total === 1 ? "1 avaliação registrada" : resumo.total + " avaliações registradas");
+    el.resTotalSub.textContent = resumo.manual
+      ? "valor informado manualmente"
+      : (resumo.total === 0
+        ? "nenhuma avaliação registrada"
+        : (resumo.total === 1 ? "1 avaliação registrada" : resumo.total + " avaliações registradas"));
     el.resMedia.textContent = resumo.mediaGeral !== null ? resumo.mediaGeral.toFixed(1).replace(".", ",") : "—";
 
     if(vendedor.foto){
@@ -776,6 +864,9 @@
     el.campoBusca.value = "";
     el.campoBusca.focus();
     hideStatus();
+    el.summaryCards.classList.remove("show");
+    el.campoTotalManual.value = "";
+    el.campoMediaManual.value = "";
   }
 
   function showStatus(msg, type){
@@ -827,10 +918,22 @@
     hideStatus();
 
     try{
-      const { vendedor, resumo, novo } = await buscarVendedor(termo);
+      const totalManualRaw = el.campoTotalManual.value.trim();
+      const mediaManualRaw = el.campoMediaManual.value.trim();
+      const manual = {
+        total: totalManualRaw !== "" ? Number(totalManualRaw) : null,
+        media: mediaManualRaw !== "" ? Number(mediaManualRaw) : null,
+      };
+
+      const { vendedor, resumo, novo } = await buscarVendedor(termo, manual);
       addRecente(vendedor.nome);
+
+      el.summaryTotal.textContent = resumo.total;
+      el.summaryMedia.textContent = resumo.mediaGeral !== null ? resumo.mediaGeral.toFixed(1).replace(".", ",") : "—";
+      el.summaryCards.classList.add("show");
+
       renderVendedor(vendedor, resumo);
-      irParaResultado();
+      setTimeout(irParaResultado, 650);
       if(novo){
         setTimeout(() => showStatus("", ""), 0); // no-op, mantém tela limpa
       }
@@ -1004,7 +1107,8 @@
       showImportStatus(msg, "ok");
     }catch(err){
       console.error("Erro ao enviar para o backend:", err);
-      showImportStatus("A planilha foi lida (" + lista.length + " linha(s)), mas não foi possível salvar no backend. Verifique se o Apps Script foi implantado com a versão mais recente.", "err");
+      const detalhe = err && err.message ? " (" + err.message + ")" : "";
+      showImportStatus("A planilha foi lida (" + lista.length + " linha(s)), mas não foi possível salvar no backend" + detalhe + ". Verifique o console (F12) para mais detalhes.", "err");
     }finally{
       el.btnImportar.disabled = false;
       el.btnImportar.textContent = "⇪ Importar planilha (Excel/CSV)";
