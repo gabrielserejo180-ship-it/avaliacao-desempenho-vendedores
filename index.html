@@ -1160,14 +1160,53 @@
   el.btnVoltar.addEventListener("click", irParaBusca);
 
   /* ---------- upload de foto ---------- */
+  function comprimirImagem(file, maxLado, qualidadeInicial){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = () => {
+        img.onload = () => {
+          let { width, height } = img;
+          if(width > height && width > maxLado){
+            height = Math.round(height * (maxLado / width));
+            width = maxLado;
+          } else if(height > maxLado){
+            width = Math.round(width * (maxLado / height));
+            height = maxLado;
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          let qualidade = qualidadeInicial;
+          let dataUrl = canvas.toDataURL("image/jpeg", qualidade);
+          // reduz a qualidade até caber com folga no limite de célula do Google Sheets (50.000 caracteres)
+          while(dataUrl.length > 42000 && qualidade > 0.25){
+            qualidade -= 0.1;
+            dataUrl = canvas.toDataURL("image/jpeg", qualidade);
+          }
+          resolve(dataUrl);
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   el.photoUploadBtn.addEventListener("click", () => el.fileFoto.click());
   el.fileFoto.addEventListener("change", async () => {
     const file = el.fileFoto.files[0];
     if(!file || !vendedorAtual) return;
     el.photoError.style.display = "none";
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result;
+    const textoOriginalBtn = el.photoUploadBtn.textContent;
+    el.photoUploadBtn.textContent = "Processando…";
+
+    try{
+      const dataUrl = await comprimirImagem(file, 320, 0.75);
       el.photoImg.src = dataUrl;
       el.photoImg.style.display = "block";
       el.photoInitials.style.display = "none";
@@ -1181,8 +1220,14 @@
         el.photoError.textContent = "Não foi possível salvar a foto no backend" + (err && err.message ? " (" + err.message + ")" : "") + ". A foto aparece só nesta sessão.";
         el.photoError.style.display = "block";
       }
-    };
-    reader.readAsDataURL(file);
+    }catch(err){
+      console.error("Erro ao processar a foto:", err);
+      el.photoUploadBtn.textContent = textoOriginalBtn;
+      el.photoError.textContent = "Não foi possível processar essa imagem.";
+      el.photoError.style.display = "block";
+    }finally{
+      el.fileFoto.value = "";
+    }
   });
 
   /* ---------- modal de nova avaliação ---------- */
