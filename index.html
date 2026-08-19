@@ -1,241 +1,1565 @@
-/**
- * SISTEMA DE AVALIAÇÃO DE DESEMPENHO DE VENDEDORES — BACKEND
- * ------------------------------------------------------------
- * Como publicar:
- * 1. Crie uma planilha Google nova.
- * 2. Extensões > Apps Script, cole este arquivo como Code.gs.
- * 3. Rode a função configurarPlanilha() uma vez (menu ▶ ao lado dela)
- *    para criar as abas "Vendedores" e "Avaliacoes" com os cabeçalhos.
- * 4. Implantar > Nova implantação > Tipo: App da Web.
- *    - Executar como: Eu
- *    - Quem pode acessar: Qualquer pessoa
- * 5. Copie a URL do Web App e cole em CONFIG.API_URL no index.html.
- */
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avaliação de Desempenho · Vendedores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    --bg: #eef1f6;
+    --bg-elev: #ffffff;
+    --panel: #ffffff;
+    --panel-border: rgba(15,23,42,0.08);
+    --panel-border-strong: rgba(15,23,42,0.16);
+    --ink: #171b23;
+    --ink-dim: #5b6472;
+    --ink-faint: #8b93a3;
+    --amber: #f5a623;
+    --amber-dim: #a3711c;
+    --teal: #16a37e;
+    --teal-dim: #0d7a5e;
+    --danger: #e0433f;
+    --good: #2e9e50;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --shadow: 0 16px 40px -18px rgba(15,23,42,0.18);
+    --font-display: 'Manrope', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    font-family: var(--font-display);
+    background:
+      radial-gradient(1100px 600px at 12% -10%, rgba(245,166,35,0.06), transparent 60%),
+      radial-gradient(900px 700px at 100% 10%, rgba(22,163,126,0.05), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    min-height:100%;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection{ background: rgba(245,166,35,0.25); }
 
-const ABA_VENDEDORES = "Vendedores";
-const ABA_AVALIACOES = "Avaliacoes";
+  .app{ min-height:100vh; display:flex; flex-direction:column; }
 
-const INDICADORES = [
-  "satisfacaoGeral", "recomendacao", "recompra", "infraestrutura",
-  "atendimento", "entrega", "negociacao", "testeRide"
-];
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:30px; height:30px; border-radius:8px;
+    background: linear-gradient(140deg, var(--amber), #c9791a);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:13px; color:#1a1206;
+  }
+  .brand-name{ font-size:13px; letter-spacing:0.06em; color: var(--ink-dim); text-transform:uppercase; }
+  .top-actions{ display:flex; gap:10px; align-items:center; }
+  .pill-btn{
+    font-family: var(--font-mono);
+    font-size:11.5px; letter-spacing:0.03em;
+    color: var(--ink-dim);
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    padding: 7px 12px;
+    border-radius: 999px;
+    cursor:pointer;
+    transition: all .15s ease;
+  }
+  .pill-btn:hover{ border-color: var(--panel-border-strong); color: var(--ink); }
 
-function configurarPlanilha(){
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  main{ flex:1; display:flex; }
 
-  let abaVendedores = ss.getSheetByName(ABA_VENDEDORES);
-  if(!abaVendedores){
-    abaVendedores = ss.insertSheet(ABA_VENDEDORES);
-    abaVendedores.appendRow(["ID", "CPF", "Nome", "Cargo", "FotoURL", "TotalManual", "MediaManual"]);
+  /* ==================================================================
+     SCREEN 1 — CONSULTA
+  ================================================================== */
+  #screen-search{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    padding: 40px 20px;
+  }
+  .search-card{
+    width:100%; max-width: 480px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    padding: 40px 36px 34px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(20px);
+    position:relative;
+  }
+  .search-eyebrow{
+    font-family: var(--font-mono);
+    font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+    color: var(--amber);
+    margin:0 0 8px;
+  }
+  .search-title{
+    font-size: 24px; font-weight:800; margin:0 0 6px; letter-spacing:-0.01em;
+  }
+  .search-sub{
+    font-size:13.5px; color: var(--ink-dim); margin:0 0 28px; line-height:1.5;
+  }
+  .field-label{
+    font-size:11px; letter-spacing:0.09em; text-transform:uppercase;
+    color: var(--ink-faint); font-weight:700; display:block; margin-bottom:8px;
+  }
+  .search-row{ display:flex; gap:10px; }
+  #campo-busca{
+    flex:1; min-width:0;
+    background: rgba(15,23,42,0.035);
+    border:1px solid var(--panel-border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    color: var(--ink);
+    font-size:15px;
+    font-family: var(--font-display);
+    outline:none;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  #campo-busca::placeholder{ color: var(--ink-faint); }
+  #campo-busca:focus{ border-color: rgba(245,166,35,0.55); background: rgba(15,23,42,0.05); }
+  .btn-ok{
+    flex-shrink:0;
+    background: linear-gradient(135deg, var(--amber), #d98c1f);
+    color:#1a1206;
+    border:none;
+    border-radius: var(--radius-sm);
+    padding: 0 26px;
+    font-weight:800; font-size:14px; letter-spacing:0.02em;
+    cursor:pointer;
+    transition: transform .1s ease, filter .15s ease;
+  }
+  .btn-ok:hover{ filter:brightness(1.08); }
+  .btn-ok:active{ transform: scale(0.97); }
+  .btn-ok:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .search-hint{
+    margin-top:12px; font-size:12px; color: var(--ink-faint); display:flex; gap:6px; align-items:center;
   }
 
-  let abaAvaliacoes = ss.getSheetByName(ABA_AVALIACOES);
-  if(!abaAvaliacoes){
-    abaAvaliacoes = ss.insertSheet(ABA_AVALIACOES);
-    abaAvaliacoes.appendRow([
-      "ID", "VendedorID", "Data",
-      "SatisfacaoGeral", "Recomendacao", "Recompra", "Infraestrutura",
-      "Atendimento", "Entrega", "Negociacao", "TesteRide"
-    ]);
+  .manual-wrap{ margin-top:20px; padding-top:18px; border-top:1px solid var(--panel-border); }
+  .manual-label{ font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color: var(--ink-faint); font-weight:700; margin-bottom:4px; }
+  .manual-hint{ font-size:11.5px; color: var(--ink-faint); margin:0 0 12px; }
+  .manual-row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .manual-field label{ font-size:10.5px; color: var(--ink-faint); display:block; margin-bottom:6px; }
+  .manual-field input{
+    width:100%; background: rgba(15,23,42,0.035); border:1px solid var(--panel-border);
+    border-radius: var(--radius-sm); padding:11px 12px; color: var(--ink); font-size:14px;
+    font-family: var(--font-mono); outline:none; transition: border-color .15s ease;
   }
-}
+  .manual-field input:focus{ border-color: rgba(22,163,126,0.5); }
+  .manual-field input::placeholder{ color: var(--ink-faint); }
+  .search-status{
+    margin-top:20px; font-size:13px; border-radius: var(--radius-sm); padding:12px 14px; display:none;
+    font-family: var(--font-mono);
+  }
+  .search-status.show{ display:block; }
+  .search-status.err{ background: rgba(224,67,63,0.1); color:#b3261e; border:1px solid rgba(224,67,63,0.3); }
+  .search-status.new{ background: rgba(22,163,126,0.08); color:#0d7a5e; border:1px solid rgba(22,163,126,0.28); }
 
-function doPost(e){
-  try{
-    const body = JSON.parse(e.postData.contents);
-    const action = body.action;
-    let resultado;
+  .summary-cards{ display:none; gap:12px; margin-top:20px; }
+  .summary-cards.show{ display:grid; grid-template-columns: 1fr 1fr; }
+  .summary-mini{
+    border-radius: var(--radius-sm); padding: 16px 14px; text-align:center;
+    border:1px solid var(--panel-border);
+  }
+  .summary-mini.total{ background: rgba(245,166,35,0.07); border-color: rgba(245,166,35,0.25); }
+  .summary-mini.media{ background: rgba(22,163,126,0.08); border-color: rgba(22,163,126,0.3); }
+  .summary-mini-label{ font-size:10px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; color: var(--ink-faint); margin:0 0 6px; }
+  .summary-mini-value{ font-family: var(--font-mono); font-size:26px; font-weight:800; }
+  .summary-mini.total .summary-mini-value{ color: var(--amber); }
+  .summary-mini.media .summary-mini-value{ color: var(--teal); }
 
-    if(action === "buscarVendedor"){
-      resultado = buscarVendedor_(body.termo, body.manual);
-    } else if(action === "salvarFoto"){
-      resultado = salvarFoto_(body.vendedorId, body.foto);
-    } else if(action === "novaAvaliacao"){
-      resultado = novaAvaliacao_(body.vendedorId, body.notas);
-    } else if(action === "importarVendedores"){
-      resultado = importarVendedores_(body.lista);
+  .recent{ margin-top:26px; padding-top:22px; border-top:1px solid var(--panel-border); }
+  .recent-label{ font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color: var(--ink-faint); font-weight:700; margin-bottom:10px; }
+  .recent-list{ display:flex; flex-wrap:wrap; gap:8px; }
+  .recent-chip{
+    font-size:12.5px; color: var(--ink-dim);
+    background: rgba(15,23,42,0.035); border:1px solid var(--panel-border);
+    padding:6px 12px; border-radius:999px; cursor:pointer; transition: all .15s ease;
+  }
+  .recent-chip:hover{ border-color: var(--teal-dim); color: var(--teal); }
+
+  .import-wrap{ margin-top:22px; padding-top:20px; border-top:1px solid var(--panel-border); }
+  .import-label{ font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color: var(--ink-faint); font-weight:700; margin-bottom:10px; }
+  .import-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .import-btn{
+    display:flex; align-items:center; gap:8px;
+    background: rgba(22,163,126,0.06); border:1px solid rgba(22,163,126,0.28); color: var(--teal);
+    padding: 10px 16px; border-radius: var(--radius-sm); font-size:13px; font-weight:700; cursor:pointer;
+    font-family: var(--font-display); transition: all .15s ease;
+  }
+  .import-btn:hover{ background: rgba(22,163,126,0.1); border-color: rgba(22,163,126,0.45); }
+  .import-btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .import-hint{ font-size:11.5px; color: var(--ink-faint); }
+  .import-status{ margin-top:10px; font-size:12.5px; font-family: var(--font-mono); display:none; }
+  .import-status.show{ display:block; }
+  .import-status.ok{ color: #0d7a5e; }
+  .import-status.err{ color:#b3261e; }
+
+  /* ==================================================================
+     SCREEN 2 — RESULTADO
+  ================================================================== */
+  #screen-result{ display:none; flex:1; flex-direction:column; }
+  .result-header{
+    padding: 26px 40px 10px;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:20px;
+  }
+  .result-title-wrap{}
+  .result-eyebrow{
+    font-family: var(--font-mono); font-size:11px; letter-spacing:0.14em;
+    text-transform:uppercase; color: var(--teal); margin:0 0 6px;
+  }
+  .result-title{ font-size: 26px; font-weight:800; margin:0; letter-spacing:-0.01em; }
+  .back-btn{
+    display:flex; align-items:center; gap:7px;
+    background:transparent; border:1px solid var(--panel-border); color: var(--ink-dim);
+    padding:9px 16px; border-radius:999px; font-size:13px; cursor:pointer;
+    font-family: var(--font-display); font-weight:600;
+    transition: all .15s ease; flex-shrink:0;
+  }
+  .back-btn:hover{ border-color: var(--panel-border-strong); color: var(--ink); }
+
+  .result-grid{
+    display:grid;
+    grid-template-columns: 300px 1fr;
+    gap: 22px;
+    padding: 18px 40px 40px;
+    flex:1;
+    align-items:start;
+  }
+
+  /* --- Left column: photo + name + cards --- */
+  .col-left{ display:flex; flex-direction:column; gap:16px; }
+  .photo-card{
+    background: var(--panel); border:1px solid var(--panel-border); border-radius: var(--radius);
+    padding: 22px; text-align:center; box-shadow: var(--shadow);
+  }
+  .photo-frame{
+    width:168px; height:168px; border-radius: 20px; margin:0 auto 16px;
+    overflow:hidden; position:relative;
+    background: linear-gradient(150deg, rgba(245,166,35,0.14), rgba(22,163,126,0.1));
+    border: 1px solid var(--panel-border-strong);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .photo-frame img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .photo-placeholder{ color: var(--ink-faint); font-size:38px; font-weight:800; }
+  .photo-upload-btn{
+    position:absolute; inset:auto 0 0 0;
+    background: rgba(11,15,22,0.82); backdrop-filter: blur(4px);
+    color: var(--amber); font-size:11px; font-weight:700; letter-spacing:0.04em;
+    padding:8px 0; cursor:pointer; border:none; text-transform:uppercase;
+    font-family: var(--font-mono);
+  }
+  .vendor-name{ font-size:17px; font-weight:800; margin:0 0 2px; letter-spacing:-0.01em; }
+  .vendor-role{ font-size:12px; color: var(--teal); font-weight:600; letter-spacing:0.03em; text-transform:uppercase; margin:0 0 4px; }
+  .vendor-doc{ font-size:11.5px; color: var(--ink-faint); font-family: var(--font-mono); margin:0; }
+
+  .stat-card{
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow:hidden;
+  }
+  .stat-badge{
+    text-align:center; padding:9px 10px; font-size:10.5px; font-weight:800;
+    letter-spacing:0.06em; text-transform:uppercase; color:#fff;
+  }
+  .stat-badge.total{ background: #16181d; }
+  .stat-badge.media{ background: var(--good); }
+  .stat-body{ background: #fff; padding: 16px 18px 18px; text-align:center; }
+  .stat-value{ font-size: 30px; font-weight:800; font-family: var(--font-mono); letter-spacing:-0.02em; }
+  .stat-value.amber{ color: #16181d; }
+  .stat-value.teal{ color: var(--good); }
+  .stat-sub{ font-size:11px; color: var(--ink-faint); margin-top:4px; }
+
+  .new-eval-btn{
+    width:100%;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dim));
+    color:#fff; border:none; border-radius: var(--radius-sm);
+    padding: 14px; font-weight:800; font-size:13.5px; cursor:pointer;
+    transition: filter .15s ease;
+  }
+  .new-eval-btn:hover{ filter:brightness(1.08); }
+
+  /* --- Right column: chart --- */
+  .col-right{
+    background: var(--panel); border:1px solid var(--panel-border); border-radius: var(--radius);
+    padding: 26px 30px 22px; box-shadow: var(--shadow); min-height: 420px;
+    display:flex; flex-direction:column;
+  }
+  .chart-title{ font-size:14px; letter-spacing:0.03em; color: var(--ink); font-weight:800; margin:0 0 22px; text-align:center; }
+  .chart-body{ flex:1; }
+  .bar-row{ display:grid; grid-template-columns: 168px 1fr 34px; align-items:center; gap:14px; margin-bottom:15px; }
+  .bar-label{ font-size:12px; color: var(--ink-dim); font-weight:700; text-align:right; text-transform:uppercase; letter-spacing:0.02em; }
+  .bar-track{ height:9px; border-radius:999px; background: rgba(15,23,42,0.07); overflow:hidden; position:relative; }
+  .bar-fill{ height:100%; border-radius:999px; width:0%; transition: width 1s cubic-bezier(.16,1,.3,1); background: linear-gradient(90deg, #6f8cf2, #3a5fe0); }
+  .bar-value{ font-family: var(--font-mono); font-size:12.5px; font-weight:700; text-align:left; color: var(--ink); }
+
+  .chart-axis{
+    display:grid; grid-template-columns: 168px 1fr 34px; gap:14px; margin: 4px 0 20px;
+  }
+  .chart-axis-labels{
+    display:flex; justify-content:space-between; font-family: var(--font-mono);
+    font-size:11px; color: var(--ink-faint); padding-top:4px; border-top:1px solid var(--panel-border);
+  }
+
+  .scale-legend{
+    margin-top: 6px; padding-top:16px; border-top:1px solid var(--panel-border);
+    display:flex; align-items:center; justify-content:center; gap:20px; flex-wrap:wrap;
+  }
+  .scale-item{ display:flex; align-items:center; gap:6px; font-size:10.5px; font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing:0.02em; }
+  .scale-dot{ width:9px; height:9px; border-radius:50%; }
+
+  .mood-row{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:18px; padding: 0 6px; font-size:26px;
+  }
+  .mood-gradient{
+    height:10px; border-radius:999px; margin-top:10px; position:relative;
+    background: linear-gradient(90deg, #e0433f, #f2994a, #f2c94c, #8bc34a, #2e9e50);
+  }
+  .mood-marker{
+    position:absolute; top:50%; width:16px; height:16px; border-radius:50%;
+    background:#fff; border:3px solid #171b23; transform: translate(-50%,-50%);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25); transition: left 1s cubic-bezier(.16,1,.3,1);
+  }
+
+  .footer-brand{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    padding: 22px 20px 30px;
+  }
+  .footer-logo-mark{
+    width:30px; height:30px; border-radius:7px; flex-shrink:0;
+    background: linear-gradient(160deg, #d81f26, #16233f);
+  }
+  .footer-brand-text{ text-align:left; line-height:1.15; }
+  .footer-brand-name{ font-size:14px; font-weight:800; color:#d81f26; letter-spacing:0.03em; }
+  .footer-brand-sub{ font-size:9.5px; font-weight:700; color: var(--ink-faint); letter-spacing:0.1em; text-transform:uppercase; }
+
+  /* ---------- Modal: nova avaliação ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background: rgba(5,7,11,0.72); backdrop-filter: blur(6px);
+    display:none; align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal{
+    width:100%; max-width: 520px; max-height:88vh; overflow-y:auto;
+    background: var(--bg-elev); border:1px solid var(--panel-border-strong);
+    border-radius: var(--radius); padding: 28px 28px 22px; box-shadow: var(--shadow);
+  }
+  .modal-title{ font-size:17px; font-weight:800; margin:0 0 4px; }
+  .modal-sub{ font-size:12.5px; color: var(--ink-dim); margin:0 0 22px; }
+  .slider-group{ margin-bottom:16px; }
+  .slider-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .slider-name{ font-size:12.5px; color: var(--ink-dim); font-weight:600; }
+  .slider-num{ font-family: var(--font-mono); font-size:14px; font-weight:700; color: var(--amber); }
+  input[type=range]{
+    width:100%; -webkit-appearance:none; height:6px; border-radius:999px;
+    background: rgba(15,23,42,0.1); outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background: var(--amber); cursor:pointer; border: 3px solid #1a1206;
+  }
+  .modal-actions{ display:flex; gap:10px; margin-top:22px; }
+  .btn-secondary{
+    flex:1; background:transparent; border:1px solid var(--panel-border); color: var(--ink-dim);
+    border-radius: var(--radius-sm); padding:13px; font-weight:700; font-size:13.5px; cursor:pointer;
+  }
+  .btn-primary{
+    flex:1; background: linear-gradient(135deg, var(--amber), #d98c1f); color:#1a1206; border:none;
+    border-radius: var(--radius-sm); padding:13px; font-weight:800; font-size:13.5px; cursor:pointer;
+  }
+
+  input[type=file]{ display:none; }
+
+  /* ---------- Cartão de exportação (fora da tela, usado só p/ gerar a imagem) ---------- */
+  .export-wrap{ position:fixed; left:-9999px; top:0; }
+  .export-card{
+    width: 1000px;
+    background: #ffffff;
+    padding: 34px 40px 30px;
+    font-family: var(--font-display);
+    color: var(--ink);
+  }
+  .export-title{ font-size:19px; font-weight:800; text-align:center; margin:0 0 26px; letter-spacing:0.01em; }
+
+  .export-grid{ display:grid; grid-template-columns: 230px 1fr; gap:30px; align-items:start; }
+
+  .export-photo{
+    width:150px; height:150px; border-radius:50%; overflow:hidden;
+    background: linear-gradient(150deg, rgba(245,166,35,0.16), rgba(22,163,126,0.12));
+    border: 3px solid rgba(15,23,42,0.1);
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 14px;
+  }
+  .export-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .export-photo-placeholder{ font-size:44px; font-weight:800; color: var(--ink-faint); }
+  .export-name{ font-size:16px; font-weight:800; margin:0 0 2px; text-align:center; text-transform:uppercase; }
+  .export-role{ font-size:12px; color: var(--ink-dim); font-weight:700; text-align:center; margin:0 0 22px; }
+
+  .export-stats{ display:flex; flex-direction:column; gap:12px; }
+  .export-stat{ border-radius:12px; overflow:hidden; border:1px solid var(--panel-border); }
+  .export-stat-badge{ text-align:center; padding:7px; font-size:10px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color:#fff; }
+  .export-stat.total .export-stat-badge{ background:#16181d; }
+  .export-stat.media .export-stat-badge{ background: var(--good); }
+  .export-stat-value{ font-family: var(--font-mono); font-size:26px; font-weight:800; text-align:center; padding:12px; background:#fff; }
+  .export-stat.total .export-stat-value{ color:#16181d; }
+  .export-stat.media .export-stat-value{ color: var(--good); }
+
+  .export-chart-title{ font-size:14px; letter-spacing:0.03em; color: var(--ink); font-weight:800; margin:0 0 18px; text-align:center; }
+  .export-chart-axis{ display:grid; grid-template-columns: 160px 1fr 34px; gap:12px; margin: 2px 0 16px; }
+  .export-chart-axis-labels{ display:flex; justify-content:space-between; font-family: var(--font-mono); font-size:10.5px; color: var(--ink-faint); padding-top:4px; border-top:1px solid var(--panel-border); }
+  .export-legend{ display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-top:14px; padding-top:14px; border-top:1px solid var(--panel-border); }
+  .export-legend-item{ display:flex; align-items:center; gap:6px; font-size:10px; font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing:0.02em; }
+  .export-legend-dot{ width:8px; height:8px; border-radius:50%; }
+  .export-mood-row{ display:flex; justify-content:space-between; margin-top:16px; padding:0 4px; font-size:22px; }
+  .export-mood-gradient{ height:9px; border-radius:999px; margin-top:8px; position:relative; background: linear-gradient(90deg, #e0433f, #f2994a, #f2c94c, #8bc34a, #2e9e50); }
+  .export-mood-marker{ position:absolute; top:50%; width:14px; height:14px; border-radius:50%; background:#fff; border:3px solid #171b23; transform: translate(-50%,-50%); }
+
+  .export-footer{ display:flex; align-items:center; justify-content:flex-end; gap:9px; margin-top:26px; }
+  .export-footer-mark{ width:26px; height:26px; border-radius:6px; background: linear-gradient(160deg, #d81f26, #16233f); }
+  .export-footer-text{ text-align:left; line-height:1.1; }
+  .export-footer-name{ font-size:13px; font-weight:800; color:#d81f26; }
+  .export-footer-sub{ font-size:8.5px; font-weight:700; color: var(--ink-faint); letter-spacing:0.08em; text-transform:uppercase; }
+
+  .share-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; background: transparent; border:1px solid rgba(245,166,35,0.35); color: var(--amber);
+    border-radius: var(--radius-sm); padding: 13px; font-weight:700; font-size:13px; cursor:pointer;
+    font-family: var(--font-display); margin-top:10px; transition: all .15s ease;
+  }
+  .share-btn:hover{ background: rgba(245,166,35,0.08); }
+  .share-btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  @media (max-width: 860px){
+    .result-grid{ grid-template-columns: 1fr; padding: 14px 18px 30px; }
+    .result-header{ padding: 20px 18px 6px; }
+    .col-left{ flex-direction: row; flex-wrap:wrap; }
+    .photo-card{ flex:1; min-width:180px; }
+    .stat-card{ flex:1; min-width:140px; }
+    .new-eval-btn{ order:99; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">GS</div>
+      <div class="brand-name">Indicador de Desempenho</div>
+    </div>
+    <div class="top-actions">
+      <button class="pill-btn" id="btn-config">Conectar backend</button>
+    </div>
+  </div>
+
+  <main>
+    <!-- =================== SCREEN 1 =================== -->
+    <section id="screen-search">
+      <div class="search-card">
+        <p class="search-eyebrow">Consulta de vendedor</p>
+        <h1 class="search-title">Buscar avaliações</h1>
+        <p class="search-sub">Informe o nome ou o CPF do vendedor para carregar o histórico de avaliações e o indicador de desempenho.</p>
+
+        <label class="field-label" for="campo-busca">Nome ou CPF</label>
+        <div class="search-row">
+          <input type="text" id="campo-busca" placeholder="Ex: Gustavo ou 000.000.000-00" autocomplete="off">
+          <button class="btn-ok" id="btn-ok">OK</button>
+        </div>
+        <p class="search-hint">Pressione Enter para confirmar</p>
+
+        <div class="manual-wrap">
+          <p class="manual-label">Preencher manualmente (opcional)</p>
+          <p class="manual-hint">Se você já sabe esses números de outro lugar, informe aqui — o sistema passa a usar esses valores em vez de calcular a partir das avaliações.</p>
+          <div class="manual-row">
+            <div class="manual-field">
+              <label for="campo-total-manual">Total de avaliações</label>
+              <input type="number" id="campo-total-manual" min="0" step="1" placeholder="ex: 5">
+            </div>
+            <div class="manual-field">
+              <label for="campo-media-manual">Média geral (0 a 10)</label>
+              <input type="number" id="campo-media-manual" min="0" max="10" step="0.1" placeholder="ex: 9,6">
+            </div>
+          </div>
+        </div>
+
+        <div class="search-status" id="search-status"></div>
+
+        <div class="summary-cards" id="summary-cards">
+          <div class="summary-mini total">
+            <p class="summary-mini-label">Total de avaliações</p>
+            <div class="summary-mini-value" id="summary-total">0</div>
+          </div>
+          <div class="summary-mini media">
+            <p class="summary-mini-label">Média geral</p>
+            <div class="summary-mini-value" id="summary-media">—</div>
+          </div>
+        </div>
+
+        <div class="recent" id="recent-wrap" style="display:none;">
+          <p class="recent-label">Consultados recentemente</p>
+          <div class="recent-list" id="recent-list"></div>
+        </div>
+
+        <div class="import-wrap">
+          <p class="import-label">Importar vendedores em lote</p>
+          <div class="import-row">
+            <button class="import-btn" id="btn-importar" type="button">⇪ Importar planilha (Excel/CSV)</button>
+            <span class="import-hint">colunas: Nome, CPF</span>
+          </div>
+          <input type="file" id="file-planilha" accept=".xlsx,.xls,.csv">
+          <p class="import-status" id="import-status"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== SCREEN 2 =================== -->
+    <section id="screen-result">
+      <div class="result-header">
+        <div class="result-title-wrap">
+          <p class="result-eyebrow">Resultado geral do indicador de desempenho</p>
+          <h1 class="result-title" id="res-nome-topo">—</h1>
+        </div>
+        <button class="back-btn" id="btn-voltar">← Nova consulta</button>
+      </div>
+
+      <div class="result-grid">
+        <div class="col-left">
+          <div class="photo-card">
+            <div class="photo-frame" id="photo-frame">
+              <span class="photo-placeholder" id="photo-initials">—</span>
+              <img id="photo-img" style="display:none;">
+              <button class="photo-upload-btn" id="photo-upload-btn" style="display:none;">Enviar foto</button>
+            </div>
+            <p class="photo-error" id="photo-error" style="display:none; color:#b3261e; font-size:11px; font-family: var(--font-mono); margin:8px 0 0;"></p>
+            <p class="vendor-name" id="res-nome">—</p>
+            <p class="vendor-role" id="res-cargo">Consultor de Vendas</p>
+            <p class="vendor-doc" id="res-cpf">—</p>
+            <input type="file" id="file-foto" accept="image/*">
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-badge total">Total de avaliações</div>
+            <div class="stat-body">
+              <div class="stat-value amber" id="res-total">0</div>
+              <div class="stat-sub" id="res-total-sub">nenhuma avaliação registrada</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-badge media">Média geral</div>
+            <div class="stat-body">
+              <div class="stat-value teal" id="res-media">—</div>
+              <div class="stat-sub">escala de 0 a 10</div>
+            </div>
+          </div>
+
+          <button class="new-eval-btn" id="btn-nova-avaliacao">+ Registrar nova avaliação</button>
+          <button class="share-btn" id="btn-compartilhar">⇧ Compartilhar resultado (JPEG)</button>
+          <button class="share-btn" id="btn-baixar">⇩ Baixar imagem (JPEG)</button>
+        </div>
+
+        <div class="col-right">
+          <p class="chart-title">MÉDIA DE NOTAS POR ITEM AVALIADO</p>
+          <div class="chart-body" id="chart-body"></div>
+          <div class="chart-axis">
+            <div></div>
+            <div class="chart-axis-labels"><span>2,0</span><span>4,0</span><span>6,0</span><span>8,0</span><span>10,0</span></div>
+            <div></div>
+          </div>
+          <div class="scale-legend">
+            <div class="scale-item"><span class="scale-dot" style="background:#e0433f"></span>Insatisfatório</div>
+            <div class="scale-item"><span class="scale-dot" style="background:#f2994a"></span>Regular</div>
+            <div class="scale-item"><span class="scale-dot" style="background:#f2c94c"></span>Bom</div>
+            <div class="scale-item"><span class="scale-dot" style="background:#8bc34a"></span>Ótimo</div>
+            <div class="scale-item"><span class="scale-dot" style="background:#2e9e50"></span>Excelente</div>
+          </div>
+          <div class="mood-row">
+            <span>😠</span><span>🙁</span><span>😐</span><span>🙂</span><span>😄</span>
+          </div>
+          <div class="mood-gradient">
+            <div class="mood-marker" id="mood-marker" style="left:50%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-brand">
+        <div class="footer-logo-mark"></div>
+        <div class="footer-brand-text">
+          <div class="footer-brand-name">ALVORADA MOTOS</div>
+          <div class="footer-brand-sub">100% Maranhense</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+
+<!-- =================== MODAL: NOVA AVALIAÇÃO =================== -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h2 class="modal-title">Nova avaliação</h2>
+    <p class="modal-sub">Ajuste as notas de 0 a 10 para cada item avaliado do vendedor <b id="modal-vendedor-nome">—</b>.</p>
+    <div id="sliders-wrap"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="btn-cancelar-avaliacao">Cancelar</button>
+      <button class="btn-primary" id="btn-salvar-avaliacao">Salvar avaliação</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== CARTÃO DE EXPORTAÇÃO (oculto, usado só para gerar a imagem) =================== -->
+<div class="export-wrap">
+  <div class="export-card" id="export-card">
+    <p class="export-title">RESULTADO GERAL DO INDICADOR DE DESEMPENHO</p>
+
+    <div class="export-grid">
+      <div>
+        <div class="export-photo" id="export-photo">
+          <span class="export-photo-placeholder" id="export-photo-initials">—</span>
+          <img id="export-photo-img" style="display:none;">
+        </div>
+        <p class="export-name" id="export-nome">—</p>
+        <p class="export-role" id="export-cargo">Consultor de Vendas</p>
+
+        <div class="export-stats">
+          <div class="export-stat total">
+            <div class="export-stat-badge">Total de avaliações</div>
+            <div class="export-stat-value" id="export-total">0</div>
+          </div>
+          <div class="export-stat media">
+            <div class="export-stat-badge">Média geral</div>
+            <div class="export-stat-value" id="export-media">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="export-chart-title">MÉDIA DE NOTAS POR ITEM AVALIADO</p>
+        <div id="export-chart-body"></div>
+        <div class="export-chart-axis">
+          <div></div>
+          <div class="export-chart-axis-labels"><span>2,0</span><span>4,0</span><span>6,0</span><span>8,0</span><span>10,0</span></div>
+          <div></div>
+        </div>
+        <div class="export-legend">
+          <div class="export-legend-item"><span class="export-legend-dot" style="background:#e0433f"></span>Insatisfatório</div>
+          <div class="export-legend-item"><span class="export-legend-dot" style="background:#f2994a"></span>Regular</div>
+          <div class="export-legend-item"><span class="export-legend-dot" style="background:#f2c94c"></span>Bom</div>
+          <div class="export-legend-item"><span class="export-legend-dot" style="background:#8bc34a"></span>Ótimo</div>
+          <div class="export-legend-item"><span class="export-legend-dot" style="background:#2e9e50"></span>Excelente</div>
+        </div>
+        <div class="export-mood-row"><span>😠</span><span>🙁</span><span>😐</span><span>🙂</span><span>😄</span></div>
+        <div class="export-mood-gradient"><div class="export-mood-marker" id="export-mood-marker" style="left:50%;"></div></div>
+      </div>
+    </div>
+
+    <div class="export-footer">
+      <div class="export-footer-mark"></div>
+      <div class="export-footer-text">
+        <div class="export-footer-name">ALVORADA MOTOS</div>
+        <div class="export-footer-sub">100% Maranhense</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ==================================================================
+     CONFIGURAÇÃO DE BACKEND
+     -------------------------------------------------------------
+     Este arquivo funciona sozinho (modo LOCAL, guardando os dados
+     no navegador) para você testar tudo agora mesmo.
+
+     Para produção, publique o Code.gs (Apps Script) incluído junto
+     a este pacote como Web App e cole a URL abaixo. O sistema passa
+     a usar automaticamente o Google Sheets como banco de dados.
+  ================================================================== */
+  const CONFIG = {
+    API_URL: "https://script.google.com/macros/s/AKfycbwlbMl2_oi0PYuQdb6B2WoJzBMk5aUiNgVsnKtn1cshu2mGKMZdBx5xK49mGk9jb5ZGGg/exec",
+  };
+
+  const INDICADORES = [
+    { key: "satisfacaoGeral",       label: "Satisfação Geral" },
+    { key: "recomendacao",          label: "Recomendação" },
+    { key: "recompra",              label: "Recompra" },
+    { key: "infraestrutura",        label: "Inst. e Infraestrutura" },
+    { key: "atendimento",           label: "Atendimento" },
+    { key: "entrega",               label: "Entrega" },
+    { key: "negociacao",            label: "Negociação" },
+    { key: "testeRide",             label: "Teste Ride" },
+  ];
+
+  /* ==================================================================
+     CAMADA DE DADOS
+     -------------------------------------------------------------
+     Modo LOCAL: guarda vendedores e avaliações no localStorage,
+     identificando o vendedor por CPF (ou pelo nome normalizado
+     quando não há CPF), exatamente como o Apps Script faria com
+     as abas "Vendedores" e "Avaliacoes" da planilha.
+  ================================================================== */
+  const DB_KEY = "avaliacao_desempenho_db_v1";
+
+  function loadDB(){
+    try{
+      const raw = localStorage.getItem(DB_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return { vendedores: {}, avaliacoes: [] };
+  }
+  function saveDB(db){
+    localStorage.setItem(DB_KEY, JSON.stringify(db));
+  }
+  let DB = loadDB();
+
+  function onlyDigits(s){ return (s||"").replace(/\D/g,""); }
+  function isCpf(s){ return onlyDigits(s).length === 11; }
+  function normalizeNome(s){ return (s||"").trim().toLowerCase(); }
+
+  function localBuscar(termo){
+    const digits = onlyDigits(termo);
+    if(isCpf(termo) && digits.length === 11){
+      return DB.vendedores[digits] || null;
+    }
+    const alvo = normalizeNome(termo);
+    const encontrados = Object.values(DB.vendedores).filter(v =>
+      normalizeNome(v.nome).includes(alvo)
+    );
+    return encontrados[0] || null;
+  }
+
+  function localCriarOuAtualizarVendedor(termo){
+    const digits = onlyDigits(termo);
+    const id = digits.length === 11 ? digits : "nome:" + normalizeNome(termo);
+    if(!DB.vendedores[id]){
+      DB.vendedores[id] = {
+        id,
+        cpf: digits.length === 11 ? digits : "",
+        nome: digits.length === 11 ? termo : termo.trim(),
+        cargo: "Consultor de Vendas",
+        foto: "",
+        totalManual: null,
+        mediaManual: null,
+      };
+      saveDB(DB);
+    }
+    return DB.vendedores[id];
+  }
+
+  function localAplicarManual(vendedorId, totalManual, mediaManual){
+    const v = DB.vendedores[vendedorId];
+    if(!v) return;
+    if(totalManual !== null) v.totalManual = totalManual;
+    if(mediaManual !== null) v.mediaManual = mediaManual;
+    saveDB(DB);
+  }
+
+  function localImportarLote(lista){
+    // lista: [{ nome, cpf }, ...]
+    let importados = 0, duplicados = 0, invalidos = 0;
+    lista.forEach(item => {
+      const nome = (item.nome || "").trim();
+      const cpfDigits = onlyDigits(item.cpf || "");
+      if(!nome){ invalidos++; return; }
+      const id = cpfDigits.length === 11 ? cpfDigits : "nome:" + normalizeNome(nome);
+      if(DB.vendedores[id]){ duplicados++; return; }
+      DB.vendedores[id] = {
+        id,
+        cpf: cpfDigits.length === 11 ? cpfDigits : "",
+        nome,
+        cargo: "Consultor de Vendas",
+        foto: "",
+      };
+      importados++;
+    });
+    saveDB(DB);
+    return { importados, duplicados, invalidos };
+  }
+
+  function localAvaliacoesDoVendedor(id){
+    return DB.avaliacoes.filter(a => a.vendedorId === id);
+  }
+
+  function localCalcularResumo(vendedor){
+    const avals = localAvaliacoesDoVendedor(vendedor.id);
+    const total = avals.length;
+    let mediaGeral = null;
+    const medias = {};
+    INDICADORES.forEach(ind => medias[ind.key] = null);
+
+    if(total > 0){
+      INDICADORES.forEach(ind => {
+        const soma = avals.reduce((acc,a) => acc + (Number(a[ind.key]) || 0), 0);
+        medias[ind.key] = soma / total;
+      });
+      const somaGeral = INDICADORES.reduce((acc,ind) => acc + (medias[ind.key]||0), 0);
+      mediaGeral = somaGeral / INDICADORES.length;
+    }
+
+    const usaManual = vendedor.totalManual !== null && vendedor.totalManual !== undefined
+      && vendedor.mediaManual !== null && vendedor.mediaManual !== undefined;
+    if(usaManual){
+      const mediasManuais = {};
+      INDICADORES.forEach(ind => mediasManuais[ind.key] = vendedor.mediaManual);
+      return { total: vendedor.totalManual, mediaGeral: vendedor.mediaManual, medias: mediasManuais, manual: true };
+    }
+    return { total, mediaGeral, medias, manual: false };
+  }
+
+  function localSalvarFoto(vendedorId, dataUrl){
+    if(DB.vendedores[vendedorId]){
+      DB.vendedores[vendedorId].foto = dataUrl;
+      saveDB(DB);
+    }
+  }
+
+  function localSalvarAvaliacao(vendedorId, notas){
+    DB.avaliacoes.push(Object.assign({
+      vendedorId,
+      data: new Date().toISOString(),
+    }, notas));
+    saveDB(DB);
+  }
+
+  /* ==================================================================
+     Wrapper único: usa a API do Apps Script se CONFIG.API_URL estiver
+     preenchida; caso contrário usa as funções locais acima. Assim o
+     resto da interface nunca precisa saber qual modo está ativo.
+  ================================================================== */
+  async function apiCall(action, payload){
+    const res = await fetch(CONFIG.API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // evita preflight no Apps Script
+      body: JSON.stringify(Object.assign({ action }, payload)),
+    });
+    const texto = await res.text();
+    let json;
+    try{
+      json = JSON.parse(texto);
+    }catch(e){
+      throw new Error("resposta inesperada do Apps Script: " + texto.slice(0, 200));
+    }
+    if(json && json.erro) throw new Error(json.erro);
+    return json;
+  }
+
+  async function buscarVendedor(termo, manual){
+    if(CONFIG.API_URL){
+      return apiCall("buscarVendedor", { termo, manual });
+    }
+    let vendedor = localBuscar(termo);
+    let novo = false;
+    if(!vendedor){
+      vendedor = localCriarOuAtualizarVendedor(termo);
+      novo = true;
+    }
+    if(manual && (manual.total !== null || manual.media !== null)){
+      localAplicarManual(vendedor.id, manual.total, manual.media);
+    }
+    const resumo = localCalcularResumo(vendedor);
+    return { vendedor, resumo, novo };
+  }
+
+  async function importarVendedoresLote(lista){
+    if(CONFIG.API_URL){
+      return apiCall("importarVendedores", { lista });
+    }
+    return localImportarLote(lista);
+  }
+
+  async function salvarFoto(vendedorId, dataUrl){
+    if(CONFIG.API_URL){
+      return apiCall("salvarFoto", { vendedorId, foto: dataUrl });
+    }
+    localSalvarFoto(vendedorId, dataUrl);
+    return { ok: true };
+  }
+
+  async function salvarAvaliacao(vendedorId, notas){
+    if(CONFIG.API_URL){
+      return apiCall("novaAvaliacao", { vendedorId, notas });
+    }
+    localSalvarAvaliacao(vendedorId, notas);
+    return { ok: true };
+  }
+
+  /* ==================================================================
+     ESTADO DA TELA
+  ================================================================== */
+  let vendedorAtual = null;
+  let resumoAtual = null;
+
+  const el = {
+    campoBusca: document.getElementById("campo-busca"),
+    btnOk: document.getElementById("btn-ok"),
+    searchStatus: document.getElementById("search-status"),
+    recentWrap: document.getElementById("recent-wrap"),
+    recentList: document.getElementById("recent-list"),
+
+    summaryCards: document.getElementById("summary-cards"),
+    summaryTotal: document.getElementById("summary-total"),
+    summaryMedia: document.getElementById("summary-media"),
+
+    campoTotalManual: document.getElementById("campo-total-manual"),
+    campoMediaManual: document.getElementById("campo-media-manual"),
+
+    btnImportar: document.getElementById("btn-importar"),
+    filePlanilha: document.getElementById("file-planilha"),
+    importStatus: document.getElementById("import-status"),
+
+    screenSearch: document.getElementById("screen-search"),
+    screenResult: document.getElementById("screen-result"),
+    btnVoltar: document.getElementById("btn-voltar"),
+
+    resNomeTopo: document.getElementById("res-nome-topo"),
+    resNome: document.getElementById("res-nome"),
+    resCargo: document.getElementById("res-cargo"),
+    resCpf: document.getElementById("res-cpf"),
+    resTotal: document.getElementById("res-total"),
+    resTotalSub: document.getElementById("res-total-sub"),
+    resMedia: document.getElementById("res-media"),
+
+    photoFrame: document.getElementById("photo-frame"),
+    photoInitials: document.getElementById("photo-initials"),
+    photoImg: document.getElementById("photo-img"),
+    photoUploadBtn: document.getElementById("photo-upload-btn"),
+    photoError: document.getElementById("photo-error"),
+    fileFoto: document.getElementById("file-foto"),
+
+    btnCompartilhar: document.getElementById("btn-compartilhar"),
+    btnBaixar: document.getElementById("btn-baixar"),
+    exportCard: document.getElementById("export-card"),
+    exportPhoto: document.getElementById("export-photo"),
+    exportPhotoInitials: document.getElementById("export-photo-initials"),
+    exportPhotoImg: document.getElementById("export-photo-img"),
+    exportNome: document.getElementById("export-nome"),
+    exportCargo: document.getElementById("export-cargo"),
+    exportTotal: document.getElementById("export-total"),
+    exportMedia: document.getElementById("export-media"),
+    exportChartBody: document.getElementById("export-chart-body"),
+    exportMoodMarker: document.getElementById("export-mood-marker"),
+
+    chartBody: document.getElementById("chart-body"),
+    moodMarker: document.getElementById("mood-marker"),
+
+    btnNovaAvaliacao: document.getElementById("btn-nova-avaliacao"),
+    modalOverlay: document.getElementById("modal-overlay"),
+    modalVendedorNome: document.getElementById("modal-vendedor-nome"),
+    slidersWrap: document.getElementById("sliders-wrap"),
+    btnCancelarAvaliacao: document.getElementById("btn-cancelar-avaliacao"),
+    btnSalvarAvaliacao: document.getElementById("btn-salvar-avaliacao"),
+
+    btnConfig: document.getElementById("btn-config"),
+  };
+
+  function formatCpf(digits){
+    if(digits.length !== 11) return digits;
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  }
+
+  function larguraBarraPct(valor){
+    // eixo do gráfico vai de 2,0 a 10,0 (igual à referência visual)
+    if(valor === null) return 0;
+    return Math.max(0, Math.min(100, ((valor - 2) / 8) * 100));
+  }
+
+  function iniciais(nome){
+    const partes = (nome||"").trim().split(/\s+/).filter(Boolean);
+    if(partes.length === 0) return "?";
+    if(partes.length === 1) return partes[0][0].toUpperCase();
+    return (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
+  }
+
+  function posicaoMoodPct(valor){
+    // escala de humor de 0 a 10 (0 = insatisfeito, 10 = excelente)
+    if(valor === null) return 50;
+    return Math.max(2, Math.min(98, (valor / 10) * 100));
+  }
+
+  function renderChart(medias){
+    el.chartBody.innerHTML = "";
+    INDICADORES.forEach(ind => {
+      const valor = medias[ind.key];
+      const row = document.createElement("div");
+      row.className = "bar-row";
+
+      const label = document.createElement("div");
+      label.className = "bar-label";
+      label.textContent = ind.label;
+
+      const track = document.createElement("div");
+      track.className = "bar-track";
+      const fill = document.createElement("div");
+      fill.className = "bar-fill";
+      track.appendChild(fill);
+
+      const valEl = document.createElement("div");
+      valEl.className = "bar-value";
+      valEl.textContent = valor !== null ? valor.toFixed(1).replace(".", ",") : "—";
+
+      row.appendChild(label);
+      row.appendChild(track);
+      row.appendChild(valEl);
+      el.chartBody.appendChild(row);
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          fill.style.width = larguraBarraPct(valor) + "%";
+        }, 30);
+      });
+    });
+  }
+
+  function renderVendedor(vendedor, resumo){
+    vendedorAtual = vendedor;
+    resumoAtual = resumo;
+
+    el.resNomeTopo.textContent = vendedor.nome.toUpperCase();
+    el.resNome.textContent = vendedor.nome;
+    el.resCargo.textContent = vendedor.cargo || "Consultor de Vendas";
+    el.resCpf.textContent = vendedor.cpf ? formatCpf(vendedor.cpf) : "CPF não informado";
+
+    el.resTotal.textContent = resumo.total;
+    el.resTotalSub.textContent = resumo.manual
+      ? "valor informado manualmente"
+      : (resumo.total === 0
+        ? "nenhuma avaliação registrada"
+        : (resumo.total === 1 ? "1 avaliação registrada" : resumo.total + " avaliações registradas"));
+    el.resMedia.textContent = resumo.mediaGeral !== null ? resumo.mediaGeral.toFixed(1).replace(".", ",") : "—";
+
+    if(vendedor.foto){
+      el.photoImg.src = vendedor.foto;
+      el.photoImg.style.display = "block";
+      el.photoInitials.style.display = "none";
+      el.photoUploadBtn.style.display = "block";
+      el.photoUploadBtn.textContent = "Trocar foto";
     } else {
-      resultado = { erro: "Ação desconhecida: " + action };
+      el.photoImg.style.display = "none";
+      el.photoInitials.style.display = "block";
+      el.photoInitials.textContent = iniciais(vendedor.nome);
+      el.photoUploadBtn.style.display = "block";
+      el.photoUploadBtn.textContent = "Enviar foto";
     }
+    el.photoError.style.display = "none";
 
-    return ContentService.createTextOutput(JSON.stringify(resultado))
-      .setMimeType(ContentService.MimeType.JSON);
-  }catch(err){
-    return ContentService.createTextOutput(JSON.stringify({ erro: err.message + " | " + err.stack }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function apenasDigitos_(s){
-  return (s || "").toString().replace(/\D/g, "");
-}
-
-function ehCpf_(s){
-  return apenasDigitos_(s).length === 11;
-}
-
-function idParaTermo_(termo){
-  const digitos = apenasDigitos_(termo);
-  return ehCpf_(termo) ? digitos : ("nome:" + termo.trim().toLowerCase());
-}
-
-function lerVendedores_(){
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_VENDEDORES);
-  const dados = sheet.getDataRange().getValues();
-  const linhas = dados.slice(1);
-  return linhas.map((linha, i) => ({
-    linha: i + 2,
-    id: linha[0],
-    cpf: linha[1],
-    nome: linha[2],
-    cargo: linha[3],
-    foto: linha[4],
-    totalManual: linha[5] === "" || linha[5] === undefined ? null : Number(linha[5]),
-    mediaManual: linha[6] === "" || linha[6] === undefined ? null : Number(linha[6]),
-  }));
-}
-
-function buscarVendedor_(termo, manual){
-  const vendedores = lerVendedores_();
-  let vendedor = null;
-  let novo = false;
-
-  if(ehCpf_(termo)){
-    const cpf = apenasDigitos_(termo);
-    vendedor = vendedores.find(v => apenasDigitos_(v.cpf) === cpf) || null;
-  } else {
-    const alvo = termo.trim().toLowerCase();
-    vendedor = vendedores.find(v => (v.nome || "").toLowerCase().indexOf(alvo) !== -1) || null;
-  }
-
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_VENDEDORES);
-
-  if(!vendedor){
-    novo = true;
-    const id = idParaTermo_(termo);
-    const cpf = ehCpf_(termo) ? apenasDigitos_(termo) : "";
-    const nome = termo.trim();
-    sheet.appendRow([id, cpf, nome, "Consultor de Vendas", "", "", ""]);
-    vendedor = { id, cpf, nome, cargo: "Consultor de Vendas", foto: "", totalManual: null, mediaManual: null, linha: sheet.getLastRow() };
-  }
-
-  if(manual && (manual.total !== null && manual.total !== undefined || manual.media !== null && manual.media !== undefined)){
-    if(manual.total !== null && manual.total !== undefined){
-      vendedor.totalManual = manual.total;
-      sheet.getRange(vendedor.linha || acharLinhaVendedor_(sheet, vendedor.id), 6).setValue(manual.total);
-    }
-    if(manual.media !== null && manual.media !== undefined){
-      vendedor.mediaManual = manual.media;
-      sheet.getRange(vendedor.linha || acharLinhaVendedor_(sheet, vendedor.id), 7).setValue(manual.media);
+    renderChart(resumo.medias);
+    if(el.moodMarker){
+      el.moodMarker.style.left = posicaoMoodPct(resumo.mediaGeral) + "%";
     }
   }
 
-  const resumo = calcularResumo_(vendedor);
-  return { vendedor: vendedor, resumo: resumo, novo: novo };
-}
-
-function acharLinhaVendedor_(sheet, vendedorId){
-  const dados = sheet.getDataRange().getValues();
-  for(let i = 1; i < dados.length; i++){
-    if(dados[i][0] === vendedorId) return i + 1;
+  function irParaResultado(){
+    el.screenSearch.style.display = "none";
+    el.screenResult.style.display = "flex";
   }
-  return -1;
-}
+  function irParaBusca(){
+    el.screenResult.style.display = "none";
+    el.screenSearch.style.display = "flex";
+    el.campoBusca.value = "";
+    el.campoBusca.focus();
+    hideStatus();
+    el.summaryCards.classList.remove("show");
+    el.campoTotalManual.value = "";
+    el.campoMediaManual.value = "";
+  }
 
-function calcularResumo_(vendedor){
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_AVALIACOES);
-  const dados = sheet.getDataRange().getValues();
-  const linhas = dados.slice(1).filter(l => l[1] === vendedor.id);
+  function showStatus(msg, type){
+    el.searchStatus.textContent = msg;
+    el.searchStatus.className = "search-status show " + type;
+  }
+  function hideStatus(){
+    el.searchStatus.className = "search-status";
+  }
 
-  const total = linhas.length;
-  const medias = {};
-  INDICADORES.forEach((key, idx) => {
-    if(total === 0){ medias[key] = null; return; }
-    const soma = linhas.reduce((acc, l) => acc + (Number(l[3 + idx]) || 0), 0);
-    medias[key] = soma / total;
+  /* ---------- histórico de consultas recentes (só UI, não é dado fixo) ---------- */
+  const RECENT_KEY = "avaliacao_desempenho_recentes_v1";
+  function getRecentes(){
+    try{ return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; }catch(e){ return []; }
+  }
+  function addRecente(nome){
+    let lista = getRecentes().filter(n => n.toLowerCase() !== nome.toLowerCase());
+    lista.unshift(nome);
+    lista = lista.slice(0, 6);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(lista));
+    renderRecentes();
+  }
+  function renderRecentes(){
+    const lista = getRecentes();
+    el.recentList.innerHTML = "";
+    if(lista.length === 0){ el.recentWrap.style.display = "none"; return; }
+    el.recentWrap.style.display = "block";
+    lista.forEach(nome => {
+      const chip = document.createElement("div");
+      chip.className = "recent-chip";
+      chip.textContent = nome;
+      chip.addEventListener("click", () => {
+        el.campoBusca.value = nome;
+        executarBusca();
+      });
+      el.recentList.appendChild(chip);
+    });
+  }
+
+  /* ---------- ações principais ---------- */
+  async function executarBusca(){
+    const termo = el.campoBusca.value.trim();
+    if(!termo){
+      showStatus("Informe um nome ou CPF para consultar.", "err");
+      return;
+    }
+    el.btnOk.disabled = true;
+    el.btnOk.textContent = "…";
+    hideStatus();
+
+    try{
+      const totalManualRaw = el.campoTotalManual.value.trim();
+      const mediaManualRaw = el.campoMediaManual.value.trim();
+      const manual = {
+        total: totalManualRaw !== "" ? Number(totalManualRaw) : null,
+        media: mediaManualRaw !== "" ? Number(mediaManualRaw) : null,
+      };
+
+      const { vendedor, resumo, novo } = await buscarVendedor(termo, manual);
+      addRecente(vendedor.nome);
+
+      el.summaryTotal.textContent = resumo.total;
+      el.summaryMedia.textContent = resumo.mediaGeral !== null ? resumo.mediaGeral.toFixed(1).replace(".", ",") : "—";
+      el.summaryCards.classList.add("show");
+
+      renderVendedor(vendedor, resumo);
+      setTimeout(irParaResultado, 650);
+      if(novo){
+        setTimeout(() => showStatus("", ""), 0); // no-op, mantém tela limpa
+      }
+    }catch(err){
+      console.error(err);
+      showStatus("Não foi possível consultar agora. Verifique a conexão com o backend.", "err");
+    }finally{
+      el.btnOk.disabled = false;
+      el.btnOk.textContent = "OK";
+    }
+  }
+
+  el.btnOk.addEventListener("click", executarBusca);
+  el.campoBusca.addEventListener("keydown", e => {
+    if(e.key === "Enter") executarBusca();
+  });
+  el.btnVoltar.addEventListener("click", irParaBusca);
+
+  /* ---------- upload de foto ---------- */
+  function comprimirImagem(file, maxLado, qualidadeInicial){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = () => {
+        img.onload = () => {
+          let { width, height } = img;
+          if(width > height && width > maxLado){
+            height = Math.round(height * (maxLado / width));
+            width = maxLado;
+          } else if(height > maxLado){
+            width = Math.round(width * (maxLado / height));
+            height = maxLado;
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          let qualidade = qualidadeInicial;
+          let dataUrl = canvas.toDataURL("image/jpeg", qualidade);
+          // reduz a qualidade até caber com folga no limite de célula do Google Sheets (50.000 caracteres)
+          while(dataUrl.length > 42000 && qualidade > 0.25){
+            qualidade -= 0.1;
+            dataUrl = canvas.toDataURL("image/jpeg", qualidade);
+          }
+          resolve(dataUrl);
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  el.photoUploadBtn.addEventListener("click", () => el.fileFoto.click());
+  el.fileFoto.addEventListener("change", async () => {
+    const file = el.fileFoto.files[0];
+    if(!file || !vendedorAtual) return;
+    el.photoError.style.display = "none";
+    const textoOriginalBtn = el.photoUploadBtn.textContent;
+    el.photoUploadBtn.textContent = "Processando…";
+
+    try{
+      const dataUrl = await comprimirImagem(file, 320, 0.75);
+      el.photoImg.src = dataUrl;
+      el.photoImg.style.display = "block";
+      el.photoInitials.style.display = "none";
+      el.photoUploadBtn.style.display = "block";
+      el.photoUploadBtn.textContent = "Trocar foto";
+      vendedorAtual.foto = dataUrl;
+      try{
+        await salvarFoto(vendedorAtual.id, dataUrl);
+      }catch(err){
+        console.error("Erro ao salvar foto:", err);
+        el.photoError.textContent = "Não foi possível salvar a foto no backend" + (err && err.message ? " (" + err.message + ")" : "") + ". A foto aparece só nesta sessão.";
+        el.photoError.style.display = "block";
+      }
+    }catch(err){
+      console.error("Erro ao processar a foto:", err);
+      el.photoUploadBtn.textContent = textoOriginalBtn;
+      el.photoError.textContent = "Não foi possível processar essa imagem.";
+      el.photoError.style.display = "block";
+    }finally{
+      el.fileFoto.value = "";
+    }
   });
 
-  let mediaGeral = null;
-  if(total > 0){
-    const somaGeral = INDICADORES.reduce((acc, key) => acc + (medias[key] || 0), 0);
-    mediaGeral = somaGeral / INDICADORES.length;
+  /* ---------- modal de nova avaliação ---------- */
+  function abrirModal(){
+    if(!vendedorAtual) return;
+    el.modalVendedorNome.textContent = vendedorAtual.nome;
+    el.slidersWrap.innerHTML = "";
+    INDICADORES.forEach(ind => {
+      const group = document.createElement("div");
+      group.className = "slider-group";
+      group.innerHTML = `
+        <div class="slider-head">
+          <span class="slider-name">${ind.label}</span>
+          <span class="slider-num" data-num="${ind.key}">8,0</span>
+        </div>
+        <input type="range" min="0" max="10" step="0.5" value="8" data-slider="${ind.key}">
+      `;
+      el.slidersWrap.appendChild(group);
+    });
+    el.slidersWrap.querySelectorAll("input[type=range]").forEach(inp => {
+      inp.addEventListener("input", () => {
+        const key = inp.dataset.slider;
+        el.slidersWrap.querySelector(`[data-num="${key}"]`).textContent = Number(inp.value).toFixed(1).replace(".", ",");
+      });
+    });
+    el.modalOverlay.classList.add("show");
   }
+  function fecharModal(){ el.modalOverlay.classList.remove("show"); }
 
-  const usaManual = vendedor.totalManual !== null && vendedor.totalManual !== undefined
-    && vendedor.mediaManual !== null && vendedor.mediaManual !== undefined;
-  if(usaManual){
-    const mediasManuais = {};
-    INDICADORES.forEach(key => mediasManuais[key] = vendedor.mediaManual);
-    return { total: vendedor.totalManual, mediaGeral: vendedor.mediaManual, medias: mediasManuais, manual: true };
-  }
-  return { total: total, mediaGeral: mediaGeral, medias: medias, manual: false };
-}
+  el.btnNovaAvaliacao.addEventListener("click", abrirModal);
+  el.btnCancelarAvaliacao.addEventListener("click", fecharModal);
+  el.modalOverlay.addEventListener("click", e => { if(e.target === el.modalOverlay) fecharModal(); });
 
-function salvarFoto_(vendedorId, fotoDataUrl){
-  // Salva a foto (já comprimida pelo front-end) direto como texto na planilha,
-  // em vez de subir pro Drive — evita os problemas de CORS/hotlink do Drive
-  // tanto na exibição quanto na geração da imagem para compartilhar.
-  if(fotoDataUrl.length > 49000){
-    throw new Error("Imagem grande demais para salvar na planilha (" + fotoDataUrl.length + " caracteres).");
-  }
-
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_VENDEDORES);
-  const dados = sheet.getDataRange().getValues();
-  let linha = -1;
-  for(let i = 1; i < dados.length; i++){
-    if(dados[i][0] === vendedorId){ linha = i + 1; break; }
-  }
-  if(linha === -1) throw new Error("Vendedor não encontrado: " + vendedorId);
-
-  sheet.getRange(linha, 5).setValue(fotoDataUrl);
-  return { ok: true };
-}
-
-function importarVendedores_(lista){
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_VENDEDORES);
-  const vendedores = lerVendedores_();
-  const cpfsExistentes = {};
-  const nomesExistentes = {};
-  vendedores.forEach(v => {
-    if(v.cpf) cpfsExistentes[apenasDigitos_(v.cpf)] = true;
-    nomesExistentes[(v.nome || "").trim().toLowerCase()] = true;
+  el.btnSalvarAvaliacao.addEventListener("click", async () => {
+    if(!vendedorAtual) return;
+    const notas = {};
+    el.slidersWrap.querySelectorAll("input[type=range]").forEach(inp => {
+      notas[inp.dataset.slider] = Number(inp.value);
+    });
+    el.btnSalvarAvaliacao.disabled = true;
+    el.btnSalvarAvaliacao.textContent = "Salvando…";
+    try{
+      await salvarAvaliacao(vendedorAtual.id, notas);
+      const { vendedor, resumo } = await buscarVendedor(vendedorAtual.cpf || vendedorAtual.nome);
+      renderVendedor(vendedor, resumo);
+      fecharModal();
+    }catch(err){
+      console.error(err);
+      alert("Não foi possível salvar a avaliação agora.");
+    }finally{
+      el.btnSalvarAvaliacao.disabled = false;
+      el.btnSalvarAvaliacao.textContent = "Salvar avaliação";
+    }
   });
 
-  let importados = 0, duplicados = 0, invalidos = 0;
-  const novasLinhas = [];
-
-  (lista || []).forEach(item => {
-    const nome = (item.nome || "").trim();
-    const cpf = apenasDigitos_(item.cpf || "");
-    if(!nome){ invalidos++; return; }
-
-    const chave = cpf.length === 11 ? cpf : nome.toLowerCase();
-    const jaExiste = cpf.length === 11 ? cpfsExistentes[cpf] : nomesExistentes[chave];
-    if(jaExiste){ duplicados++; return; }
-
-    const id = cpf.length === 11 ? cpf : ("nome:" + nome.toLowerCase());
-    novasLinhas.push([id, cpf, nome, "Consultor de Vendas", "", "", ""]);
-
-    if(cpf.length === 11) cpfsExistentes[cpf] = true;
-    nomesExistentes[chave] = true;
-    importados++;
-  });
-
-  if(novasLinhas.length > 0){
-    sheet.getRange(sheet.getLastRow() + 1, 1, novasLinhas.length, 7).setValues(novasLinhas);
+  /* ---------- importar planilha de vendedores (Excel/CSV) ---------- */
+  function showImportStatus(msg, type){
+    el.importStatus.textContent = msg;
+    el.importStatus.className = "import-status show " + type;
   }
 
-  return { importados: importados, duplicados: duplicados, invalidos: invalidos };
-}
+  function acharColuna_(headerRow, palavrasChave){
+    const idx = headerRow.findIndex(h => {
+      const texto = String(h || "").trim().toLowerCase();
+      return palavrasChave.some(p => texto.includes(p));
+    });
+    return idx;
+  }
 
-function novaAvaliacao_(vendedorId, notas){
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_AVALIACOES);
-  const id = Utilities.getUuid();
-  sheet.appendRow([
-    id, vendedorId, new Date(),
-    notas.satisfacaoGeral || 0, notas.recomendacao || 0, notas.recompra || 0,
-    notas.infraestrutura || 0, notas.atendimento || 0, notas.entrega || 0,
-    notas.negociacao || 0, notas.testeRide || 0
-  ]);
-  return { ok: true };
-}
+  function extrairVendedoresDaPlanilha(workbook){
+    const nomeAba = workbook.SheetNames[0];
+    const aba = workbook.Sheets[nomeAba];
+    const linhas = XLSX.utils.sheet_to_json(aba, { header: 1, defval: "", raw: false });
+    if(linhas.length === 0) return [];
+
+    const header = linhas[0];
+    let colCpf = acharColuna_(header, ["cpf", "documento"]);
+    let colNome = acharColuna_(header, ["nome"]);
+
+    // fallback: se não achar cabeçalho reconhecível, assume Nome=coluna A, CPF=coluna B
+    const temCabecalho = colNome !== -1 || colCpf !== -1;
+    const linhasDados = temCabecalho ? linhas.slice(1) : linhas;
+    if(colNome === -1) colNome = 1;
+    if(colCpf === -1) colCpf = 0;
+
+    return linhasDados
+      .map(l => {
+        let cpf = String(l[colCpf] || "").trim();
+        const digitos = cpf.replace(/\D/g, "");
+        // CPF brasileiro sempre tem 11 dígitos: recompõe o zero à esquerda
+        // perdido quando a célula do Excel foi salva como número em vez de texto.
+        cpf = digitos.length > 0 && digitos.length <= 11 ? digitos.padStart(11, "0") : digitos;
+        return { nome: String(l[colNome] || "").trim(), cpf };
+      })
+      .filter(v => v.nome);
+  }
+
+  el.btnImportar.addEventListener("click", () => el.filePlanilha.click());
+  el.filePlanilha.addEventListener("change", async () => {
+    const file = el.filePlanilha.files[0];
+    if(!file) return;
+    el.btnImportar.disabled = true;
+    el.btnImportar.textContent = "Lendo planilha…";
+
+    let lista;
+    try{
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array" });
+      lista = extrairVendedoresDaPlanilha(workbook);
+    }catch(err){
+      console.error("Erro ao ler a planilha:", err);
+      showImportStatus("Não foi possível ler essa planilha. Confirme o formato (.xlsx, .xls ou .csv).", "err");
+      el.btnImportar.disabled = false;
+      el.btnImportar.textContent = "⇪ Importar planilha (Excel/CSV)";
+      el.filePlanilha.value = "";
+      return;
+    }
+
+    if(lista.length === 0){
+      showImportStatus("Nenhum vendedor encontrado. Verifique se a planilha tem as colunas Nome e CPF.", "err");
+      el.btnImportar.disabled = false;
+      el.btnImportar.textContent = "⇪ Importar planilha (Excel/CSV)";
+      el.filePlanilha.value = "";
+      return;
+    }
+
+    el.btnImportar.textContent = "Importando " + lista.length + " linha(s)…";
+    try{
+      const { importados, duplicados, invalidos } = await importarVendedoresLote(lista);
+      let msg = `${importados} vendedor(es) importado(s).`;
+      if(duplicados) msg += ` ${duplicados} já existiam.`;
+      if(invalidos) msg += ` ${invalidos} linha(s) ignorada(s).`;
+      showImportStatus(msg, "ok");
+    }catch(err){
+      console.error("Erro ao enviar para o backend:", err);
+      const detalhe = err && err.message ? " (" + err.message + ")" : "";
+      showImportStatus("A planilha foi lida (" + lista.length + " linha(s)), mas não foi possível salvar no backend" + detalhe + ". Verifique o console (F12) para mais detalhes.", "err");
+    }finally{
+      el.btnImportar.disabled = false;
+      el.btnImportar.textContent = "⇪ Importar planilha (Excel/CSV)";
+      el.filePlanilha.value = "";
+    }
+  });
+
+  /* ---------- compartilhar resultado como imagem (JPEG) ---------- */
+  function iniciaisExport(nome){
+    const partes = (nome||"").trim().split(/\s+/).filter(Boolean);
+    if(partes.length === 0) return "?";
+    if(partes.length === 1) return partes[0][0].toUpperCase();
+    return (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
+  }
+
+  function renderExportChart(medias){
+    el.exportChartBody.innerHTML = "";
+    INDICADORES.forEach(ind => {
+      const valor = medias[ind.key];
+      const row = document.createElement("div");
+      row.className = "bar-row";
+
+      const label = document.createElement("div");
+      label.className = "bar-label";
+      label.textContent = ind.label;
+
+      const track = document.createElement("div");
+      track.className = "bar-track";
+      const fill = document.createElement("div");
+      fill.className = "bar-fill";
+      fill.style.transition = "none";
+      fill.style.width = larguraBarraPct(valor) + "%";
+      track.appendChild(fill);
+
+      const valEl = document.createElement("div");
+      valEl.className = "bar-value";
+      valEl.textContent = valor !== null ? valor.toFixed(1).replace(".", ",") : "—";
+
+      row.appendChild(label);
+      row.appendChild(track);
+      row.appendChild(valEl);
+      el.exportChartBody.appendChild(row);
+    });
+  }
+
+  function popularCartaoExportacao(){
+    el.exportNome.textContent = vendedorAtual.nome;
+    el.exportCargo.textContent = vendedorAtual.cargo || "Consultor de Vendas";
+
+    if(vendedorAtual.foto){
+      el.exportPhotoImg.src = vendedorAtual.foto;
+      el.exportPhotoImg.style.display = "block";
+      el.exportPhotoInitials.style.display = "none";
+    } else {
+      el.exportPhotoImg.style.display = "none";
+      el.exportPhotoInitials.style.display = "block";
+      el.exportPhotoInitials.textContent = iniciaisExport(vendedorAtual.nome);
+    }
+
+    el.exportTotal.textContent = resumoAtual.total;
+    el.exportMedia.textContent = resumoAtual.mediaGeral !== null ? resumoAtual.mediaGeral.toFixed(1).replace(".", ",") : "—";
+    renderExportChart(resumoAtual.medias);
+    if(el.exportMoodMarker){
+      el.exportMoodMarker.style.left = posicaoMoodPct(resumoAtual.mediaGeral) + "%";
+    }
+  }
+
+  function slugNomeArquivo(nome){
+    return (nome||"resultado").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+  }
+
+  function esperarImagemCarregar(imgEl){
+    return new Promise((resolve) => {
+      if(!imgEl.src || imgEl.style.display === "none"){ resolve(); return; }
+      if(imgEl.complete && imgEl.naturalWidth > 0){ resolve(); return; }
+      const finalizar = () => {
+        imgEl.removeEventListener("load", finalizar);
+        imgEl.removeEventListener("error", finalizar);
+        resolve();
+      };
+      imgEl.addEventListener("load", finalizar);
+      imgEl.addEventListener("error", finalizar);
+      // segurança: nunca trava a geração da imagem por mais de 3s
+      setTimeout(finalizar, 3000);
+    });
+  }
+
+  async function gerarImagemResultado(){
+    popularCartaoExportacao();
+    // garante que a foto (se houver) terminou de carregar de verdade antes de capturar
+    await esperarImagemCarregar(el.exportPhotoImg);
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const canvas = await html2canvas(el.exportCard, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      imageTimeout: 8000,
+    });
+
+    const nomeArquivo = "resultado-" + slugNomeArquivo(vendedorAtual.nome) + ".jpg";
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    return { blob, nomeArquivo };
+  }
+
+  function baixarBlob(blob, nomeArquivo){
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = nomeArquivo;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+  }
+
+  el.btnBaixar.addEventListener("click", async () => {
+    if(!vendedorAtual || !resumoAtual) return;
+    el.btnBaixar.disabled = true;
+    el.btnBaixar.textContent = "Gerando imagem…";
+    try{
+      const { blob, nomeArquivo } = await gerarImagemResultado();
+      if(!blob) throw new Error("falha ao gerar imagem");
+      baixarBlob(blob, nomeArquivo);
+    }catch(err){
+      console.error("Erro ao gerar imagem:", err);
+      alert("Não foi possível gerar a imagem agora.");
+    }finally{
+      el.btnBaixar.disabled = false;
+      el.btnBaixar.textContent = "⇩ Baixar imagem (JPEG)";
+    }
+  });
+
+  el.btnCompartilhar.addEventListener("click", async () => {
+    if(!vendedorAtual || !resumoAtual) return;
+    el.btnCompartilhar.disabled = true;
+    el.btnCompartilhar.textContent = "Gerando imagem…";
+
+    try{
+      const { blob, nomeArquivo } = await gerarImagemResultado();
+      if(!blob){
+        el.btnCompartilhar.disabled = false;
+        el.btnCompartilhar.textContent = "⇧ Compartilhar resultado (JPEG)";
+        return;
+      }
+
+      const file = new File([blob], nomeArquivo, { type: "image/jpeg" });
+
+      if(navigator.canShare && navigator.canShare({ files: [file] })){
+        try{
+          await navigator.share({
+            files: [file],
+            title: "Resultado — " + vendedorAtual.nome,
+            text: "Indicador de Desempenho — " + vendedorAtual.nome,
+          });
+        }catch(shareErr){
+          // usuário cancelou o compartilhamento — sem problema
+        }
+      } else {
+        baixarBlob(blob, nomeArquivo);
+      }
+
+      el.btnCompartilhar.disabled = false;
+      el.btnCompartilhar.textContent = "⇧ Compartilhar resultado (JPEG)";
+    }catch(err){
+      console.error("Erro ao gerar imagem:", err);
+      alert("Não foi possível gerar a imagem agora.");
+      el.btnCompartilhar.disabled = false;
+      el.btnCompartilhar.textContent = "⇧ Compartilhar resultado (JPEG)";
+    }
+  });
+
+  /* ---------- config de backend (opcional) ---------- */
+  el.btnConfig.addEventListener("click", () => {
+    const atual = CONFIG.API_URL || "";
+    const url = prompt("URL do Web App do Apps Script (deixe vazio para usar o modo local no navegador):", atual);
+    if(url !== null){
+      CONFIG.API_URL = url.trim();
+      localStorage.setItem("avaliacao_desempenho_api_url", CONFIG.API_URL);
+      showConfigState();
+    }
+  });
+  function showConfigState(){
+    el.btnConfig.textContent = CONFIG.API_URL ? "Backend: Apps Script" : "Conectar backend";
+  }
+  (function initConfig(){
+    const saved = localStorage.getItem("avaliacao_desempenho_api_url");
+    if(saved) CONFIG.API_URL = saved;
+    showConfigState();
+  })();
+
+  /* ---------- init ---------- */
+  renderRecentes();
+  el.campoBusca.focus();
+
+})();
+</script>
+</body>
+</html>
