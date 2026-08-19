@@ -523,7 +523,8 @@
           </div>
 
           <button class="new-eval-btn" id="btn-nova-avaliacao">+ Registrar nova avaliação</button>
-          <button class="share-btn" id="btn-compartilhar">⇩ Compartilhar resultado (JPEG)</button>
+          <button class="share-btn" id="btn-compartilhar">⇧ Compartilhar resultado (JPEG)</button>
+          <button class="share-btn" id="btn-baixar">⇩ Baixar imagem (JPEG)</button>
         </div>
 
         <div class="col-right">
@@ -857,6 +858,7 @@
     fileFoto: document.getElementById("file-foto"),
 
     btnCompartilhar: document.getElementById("btn-compartilhar"),
+    btnBaixar: document.getElementById("btn-baixar"),
     exportCard: document.getElementById("export-card"),
     exportPhoto: document.getElementById("export-photo"),
     exportPhotoInitials: document.getElementById("export-photo-initials"),
@@ -1293,62 +1295,85 @@
     return (nome||"resultado").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
   }
 
+  async function gerarImagemResultado(){
+    popularCartaoExportacao();
+    // pequena espera para garantir que a foto (se houver) já carregou antes de capturar
+    await new Promise(r => setTimeout(r, 120));
+
+    const canvas = await html2canvas(el.exportCard, {
+      backgroundColor: "#0a0d13",
+      scale: 2,
+      useCORS: true,
+    });
+
+    const nomeArquivo = "resultado-" + slugNomeArquivo(vendedorAtual.nome) + ".jpg";
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    return { blob, nomeArquivo };
+  }
+
+  function baixarBlob(blob, nomeArquivo){
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = nomeArquivo;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+  }
+
+  el.btnBaixar.addEventListener("click", async () => {
+    if(!vendedorAtual || !resumoAtual) return;
+    el.btnBaixar.disabled = true;
+    el.btnBaixar.textContent = "Gerando imagem…";
+    try{
+      const { blob, nomeArquivo } = await gerarImagemResultado();
+      if(!blob) throw new Error("falha ao gerar imagem");
+      baixarBlob(blob, nomeArquivo);
+    }catch(err){
+      console.error("Erro ao gerar imagem:", err);
+      alert("Não foi possível gerar a imagem agora.");
+    }finally{
+      el.btnBaixar.disabled = false;
+      el.btnBaixar.textContent = "⇩ Baixar imagem (JPEG)";
+    }
+  });
+
   el.btnCompartilhar.addEventListener("click", async () => {
     if(!vendedorAtual || !resumoAtual) return;
     el.btnCompartilhar.disabled = true;
     el.btnCompartilhar.textContent = "Gerando imagem…";
 
     try{
-      popularCartaoExportacao();
-      // pequena espera para garantir que a foto (se houver) já carregou antes de capturar
-      await new Promise(r => setTimeout(r, 120));
-
-      const canvas = await html2canvas(el.exportCard, {
-        backgroundColor: "#0a0d13",
-        scale: 2,
-        useCORS: true,
-      });
-
-      const nomeArquivo = "resultado-" + slugNomeArquivo(vendedorAtual.nome) + ".jpg";
-
-      canvas.toBlob(async (blob) => {
-        if(!blob){
-          el.btnCompartilhar.disabled = false;
-          el.btnCompartilhar.textContent = "⇩ Compartilhar resultado (JPEG)";
-          return;
-        }
-
-        const file = new File([blob], nomeArquivo, { type: "image/jpeg" });
-
-        if(navigator.canShare && navigator.canShare({ files: [file] })){
-          try{
-            await navigator.share({
-              files: [file],
-              title: "Resultado — " + vendedorAtual.nome,
-              text: "Indicador de Desempenho — " + vendedorAtual.nome,
-            });
-          }catch(shareErr){
-            // usuário cancelou o compartilhamento — sem problema
-          }
-        } else {
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.download = nomeArquivo;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          setTimeout(() => URL.revokeObjectURL(link.href), 4000);
-        }
-
+      const { blob, nomeArquivo } = await gerarImagemResultado();
+      if(!blob){
         el.btnCompartilhar.disabled = false;
-        el.btnCompartilhar.textContent = "⇩ Compartilhar resultado (JPEG)";
-      }, "image/jpeg", 0.92);
+        el.btnCompartilhar.textContent = "⇧ Compartilhar resultado (JPEG)";
+        return;
+      }
 
+      const file = new File([blob], nomeArquivo, { type: "image/jpeg" });
+
+      if(navigator.canShare && navigator.canShare({ files: [file] })){
+        try{
+          await navigator.share({
+            files: [file],
+            title: "Resultado — " + vendedorAtual.nome,
+            text: "Indicador de Desempenho — " + vendedorAtual.nome,
+          });
+        }catch(shareErr){
+          // usuário cancelou o compartilhamento — sem problema
+        }
+      } else {
+        baixarBlob(blob, nomeArquivo);
+      }
+
+      el.btnCompartilhar.disabled = false;
+      el.btnCompartilhar.textContent = "⇧ Compartilhar resultado (JPEG)";
     }catch(err){
       console.error("Erro ao gerar imagem:", err);
       alert("Não foi possível gerar a imagem agora.");
       el.btnCompartilhar.disabled = false;
-      el.btnCompartilhar.textContent = "⇩ Compartilhar resultado (JPEG)";
+      el.btnCompartilhar.textContent = "⇧ Compartilhar resultado (JPEG)";
     }
   });
 
