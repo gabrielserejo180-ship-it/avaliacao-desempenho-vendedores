@@ -11,23 +11,23 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
-    --bg: #0b0f16;
-    --bg-elev: #101623;
-    --panel: rgba(255,255,255,0.035);
-    --panel-border: rgba(255,255,255,0.08);
-    --panel-border-strong: rgba(255,255,255,0.14);
-    --ink: #eef1f7;
-    --ink-dim: #9aa4b8;
-    --ink-faint: #5c6579;
+    --bg: #eef1f6;
+    --bg-elev: #ffffff;
+    --panel: #ffffff;
+    --panel-border: rgba(15,23,42,0.08);
+    --panel-border-strong: rgba(15,23,42,0.16);
+    --ink: #171b23;
+    --ink-dim: #5b6472;
+    --ink-faint: #8b93a3;
     --amber: #f5a623;
     --amber-dim: #a3711c;
-    --teal: #2dd4bf;
-    --teal-dim: #1a8f80;
-    --danger: #e6636b;
-    --good: #3fc989;
+    --teal: #16a37e;
+    --teal-dim: #0d7a5e;
+    --danger: #e0433f;
+    --good: #2e9e50;
     --radius: 16px;
     --radius-sm: 10px;
-    --shadow: 0 20px 60px -20px rgba(0,0,0,0.6);
+    --shadow: 0 16px 40px -18px rgba(15,23,42,0.18);
     --font-display: 'Manrope', -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
@@ -37,14 +37,14 @@
     margin:0;
     font-family: var(--font-display);
     background:
-      radial-gradient(1100px 600px at 12% -10%, rgba(245,166,35,0.08), transparent 60%),
-      radial-gradient(900px 700px at 100% 10%, rgba(45,212,191,0.07), transparent 55%),
+      radial-gradient(1100px 600px at 12% -10%, rgba(245,166,35,0.06), transparent 60%),
+      radial-gradient(900px 700px at 100% 10%, rgba(22,163,126,0.05), transparent 55%),
       var(--bg);
     color: var(--ink);
     min-height:100%;
     -webkit-font-smoothing: antialiased;
   }
-  ::selection{ background: rgba(245,166,35,0.3); }
+  ::selection{ background: rgba(245,166,35,0.25); }
 
   .app{ min-height:100vh; display:flex; flex-direction:column; }
 
@@ -114,7 +114,7 @@
   .search-row{ display:flex; gap:10px; }
   #campo-busca{
     flex:1; min-width:0;
-    background: rgba(255,255,255,0.03);
+    background: rgba(15,23,42,0.035);
     border:1px solid var(--panel-border);
     border-radius: var(--radius-sm);
     padding: 14px 16px;
@@ -125,7 +125,7 @@
     transition: border-color .15s ease, background .15s ease;
   }
   #campo-busca::placeholder{ color: var(--ink-faint); }
-  #campo-busca:focus{ border-color: rgba(245,166,35,0.55); background: rgba(255,255,255,0.045); }
+  #campo-busca:focus{ border-color: rgba(245,166,35,0.55); background: rgba(15,23,42,0.05); }
   .btn-ok{
     flex-shrink:0;
     background: linear-gradient(135deg, var(--amber), #d98c1f);
@@ -151,19 +151,19 @@
   .manual-row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
   .manual-field label{ font-size:10.5px; color: var(--ink-faint); display:block; margin-bottom:6px; }
   .manual-field input{
-    width:100%; background: rgba(255,255,255,0.03); border:1px solid var(--panel-border);
+    width:100%; background: rgba(15,23,42,0.035); border:1px solid var(--panel-border);
     border-radius: var(--radius-sm); padding:11px 12px; color: var(--ink); font-size:14px;
     font-family: var(--font-mono); outline:none; transition: border-color .15s ease;
   }
-  .manual-field input:focus{ border-color: rgba(45,212,191,0.5); }
+  .manual-field input:focus{ border-color: rgba(22,163,126,0.5); }
   .manual-field input::placeholder{ color: var(--ink-faint); }
   .search-status{
     margin-top:20px; font-size:13px; border-radius: var(--radius-sm); padding:12px 14px; display:none;
     font-family: var(--font-mono);
   }
   .search-status.show{ display:block; }
-  .search-status.err{ background: rgba(230,99,107,0.1); color:#f4a1a6; border:1px solid rgba(230,99,107,0.3); }
-  .search-status.new{ background: rgba(45,212,191,0.08); color:#8fe9dd; border:1px solid rgba(45,212,191,0.28); }
+  .search-status.err{ background: rgba(224,67,63,0.1); color:#b3261e; border:1px solid rgba(224,67,63,0.3); }
+  .search-status.new{ background: rgba(22,163,126,0.08); color:#0d7a5e; border:1px solid rgba(22,163,126,0.28); }
 
   .summary-cards{ display:none; gap:12px; margin-top:20px; }
   .summary-cards.show{ display:grid; grid-template-columns: 1fr 1fr; }
@@ -172,7 +172,7 @@
     border:1px solid var(--panel-border);
   }
   .summary-mini.total{ background: rgba(245,166,35,0.07); border-color: rgba(245,166,35,0.25); }
-  .summary-mini.media{ background: rgba(45,212,191,0.08); border-color: rgba(45,212,191,0.3); }
+  .summary-mini.media{ background: rgba(22,163,126,0.08); border-color: rgba(22,163,126,0.3); }
   .summary-mini-label{ font-size:10px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; color: var(--ink-faint); margin:0 0 6px; }
   .summary-mini-value{ font-family: var(--font-mono); font-size:26px; font-weight:800; }
   .summary-mini.total .summary-mini-value{ color: var(--amber); }
@@ -183,7 +183,7 @@
   .recent-list{ display:flex; flex-wrap:wrap; gap:8px; }
   .recent-chip{
     font-size:12.5px; color: var(--ink-dim);
-    background: rgba(255,255,255,0.03); border:1px solid var(--panel-border);
+    background: rgba(15,23,42,0.035); border:1px solid var(--panel-border);
     padding:6px 12px; border-radius:999px; cursor:pointer; transition: all .15s ease;
   }
   .recent-chip:hover{ border-color: var(--teal-dim); color: var(--teal); }
@@ -193,17 +193,17 @@
   .import-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .import-btn{
     display:flex; align-items:center; gap:8px;
-    background: rgba(45,212,191,0.06); border:1px solid rgba(45,212,191,0.28); color: var(--teal);
+    background: rgba(22,163,126,0.06); border:1px solid rgba(22,163,126,0.28); color: var(--teal);
     padding: 10px 16px; border-radius: var(--radius-sm); font-size:13px; font-weight:700; cursor:pointer;
     font-family: var(--font-display); transition: all .15s ease;
   }
-  .import-btn:hover{ background: rgba(45,212,191,0.1); border-color: rgba(45,212,191,0.45); }
+  .import-btn:hover{ background: rgba(22,163,126,0.1); border-color: rgba(22,163,126,0.45); }
   .import-btn:disabled{ opacity:.5; cursor:not-allowed; }
   .import-hint{ font-size:11.5px; color: var(--ink-faint); }
   .import-status{ margin-top:10px; font-size:12.5px; font-family: var(--font-mono); display:none; }
   .import-status.show{ display:block; }
-  .import-status.ok{ color: #8fe9dd; }
-  .import-status.err{ color:#f4a1a6; }
+  .import-status.ok{ color: #0d7a5e; }
+  .import-status.err{ color:#b3261e; }
 
   /* ==================================================================
      SCREEN 2 — RESULTADO
@@ -246,7 +246,7 @@
   .photo-frame{
     width:168px; height:168px; border-radius: 20px; margin:0 auto 16px;
     overflow:hidden; position:relative;
-    background: linear-gradient(150deg, rgba(245,166,35,0.14), rgba(45,212,191,0.1));
+    background: linear-gradient(150deg, rgba(245,166,35,0.14), rgba(22,163,126,0.1));
     border: 1px solid var(--panel-border-strong);
     display:flex; align-items:center; justify-content:center;
   }
@@ -264,19 +264,26 @@
   .vendor-doc{ font-size:11.5px; color: var(--ink-faint); font-family: var(--font-mono); margin:0; }
 
   .stat-card{
-    background: var(--panel); border:1px solid var(--panel-border); border-radius: var(--radius);
-    padding: 18px 20px; box-shadow: var(--shadow);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow:hidden;
   }
-  .stat-label{ font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color: var(--ink-faint); font-weight:700; margin:0 0 8px; }
+  .stat-badge{
+    text-align:center; padding:9px 10px; font-size:10.5px; font-weight:800;
+    letter-spacing:0.06em; text-transform:uppercase; color:#fff;
+  }
+  .stat-badge.total{ background: #16181d; }
+  .stat-badge.media{ background: var(--good); }
+  .stat-body{ background: #fff; padding: 16px 18px 18px; text-align:center; }
   .stat-value{ font-size: 30px; font-weight:800; font-family: var(--font-mono); letter-spacing:-0.02em; }
-  .stat-value.amber{ color: var(--amber); }
-  .stat-value.teal{ color: var(--teal); }
-  .stat-sub{ font-size:11.5px; color: var(--ink-faint); margin-top:4px; }
+  .stat-value.amber{ color: #16181d; }
+  .stat-value.teal{ color: var(--good); }
+  .stat-sub{ font-size:11px; color: var(--ink-faint); margin-top:4px; }
 
   .new-eval-btn{
     width:100%;
-    background: linear-gradient(135deg, var(--teal), #17a894);
-    color:#04211d; border:none; border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--teal), var(--teal-dim));
+    color:#fff; border:none; border-radius: var(--radius-sm);
     padding: 14px; font-weight:800; font-size:13.5px; cursor:pointer;
     transition: filter .15s ease;
   }
@@ -285,31 +292,57 @@
   /* --- Right column: chart --- */
   .col-right{
     background: var(--panel); border:1px solid var(--panel-border); border-radius: var(--radius);
-    padding: 26px 30px 20px; box-shadow: var(--shadow); min-height: 420px;
+    padding: 26px 30px 22px; box-shadow: var(--shadow); min-height: 420px;
     display:flex; flex-direction:column;
   }
-  .chart-title{ font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color: var(--ink-dim); font-weight:700; margin:0 0 22px; }
+  .chart-title{ font-size:14px; letter-spacing:0.03em; color: var(--ink); font-weight:800; margin:0 0 22px; text-align:center; }
   .chart-body{ flex:1; }
-  .bar-row{ display:grid; grid-template-columns: 168px 1fr 46px; align-items:center; gap:14px; margin-bottom:16px; }
-  .bar-label{ font-size:12.5px; color: var(--ink-dim); font-weight:600; text-align:right; }
-  .bar-track{ height:10px; border-radius:999px; background: rgba(255,255,255,0.05); overflow:hidden; position:relative; }
-  .bar-fill{ height:100%; border-radius:999px; width:0%; transition: width 1s cubic-bezier(.16,1,.3,1); background: linear-gradient(90deg, var(--amber-dim), var(--amber)); }
-  .bar-fill.high{ background: linear-gradient(90deg, var(--teal-dim), var(--teal)); }
-  .bar-fill.low{ background: linear-gradient(90deg, #8a2f34, var(--danger)); }
-  .bar-value{ font-family: var(--font-mono); font-size:13px; font-weight:700; text-align:right; }
+  .bar-row{ display:grid; grid-template-columns: 168px 1fr 34px; align-items:center; gap:14px; margin-bottom:15px; }
+  .bar-label{ font-size:12px; color: var(--ink-dim); font-weight:700; text-align:right; text-transform:uppercase; letter-spacing:0.02em; }
+  .bar-track{ height:9px; border-radius:999px; background: rgba(15,23,42,0.07); overflow:hidden; position:relative; }
+  .bar-fill{ height:100%; border-radius:999px; width:0%; transition: width 1s cubic-bezier(.16,1,.3,1); background: linear-gradient(90deg, #6f8cf2, #3a5fe0); }
+  .bar-value{ font-family: var(--font-mono); font-size:12.5px; font-weight:700; text-align:left; color: var(--ink); }
+
+  .chart-axis{
+    display:grid; grid-template-columns: 168px 1fr 34px; gap:14px; margin: 4px 0 20px;
+  }
+  .chart-axis-labels{
+    display:flex; justify-content:space-between; font-family: var(--font-mono);
+    font-size:11px; color: var(--ink-faint); padding-top:4px; border-top:1px solid var(--panel-border);
+  }
 
   .scale-legend{
-    margin-top: 6px; padding-top:18px; border-top:1px solid var(--panel-border);
-    display:flex; align-items:center; justify-content:center; gap:22px; flex-wrap:wrap;
+    margin-top: 6px; padding-top:16px; border-top:1px solid var(--panel-border);
+    display:flex; align-items:center; justify-content:center; gap:20px; flex-wrap:wrap;
   }
-  .scale-item{ display:flex; align-items:center; gap:7px; font-size:11px; color: var(--ink-faint); }
+  .scale-item{ display:flex; align-items:center; gap:6px; font-size:10.5px; font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing:0.02em; }
   .scale-dot{ width:9px; height:9px; border-radius:50%; }
 
-  .footer-brand{
-    text-align:center; padding: 18px 20px 26px; font-size:11px; color: var(--ink-faint);
-    letter-spacing:0.06em; font-family: var(--font-mono); text-transform:uppercase;
+  .mood-row{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:18px; padding: 0 6px; font-size:26px;
   }
-  .footer-brand b{ color: var(--ink-dim); }
+  .mood-gradient{
+    height:10px; border-radius:999px; margin-top:10px; position:relative;
+    background: linear-gradient(90deg, #e0433f, #f2994a, #f2c94c, #8bc34a, #2e9e50);
+  }
+  .mood-marker{
+    position:absolute; top:50%; width:16px; height:16px; border-radius:50%;
+    background:#fff; border:3px solid #171b23; transform: translate(-50%,-50%);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25); transition: left 1s cubic-bezier(.16,1,.3,1);
+  }
+
+  .footer-brand{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    padding: 22px 20px 30px;
+  }
+  .footer-logo-mark{
+    width:30px; height:30px; border-radius:7px; flex-shrink:0;
+    background: linear-gradient(160deg, #d81f26, #16233f);
+  }
+  .footer-brand-text{ text-align:left; line-height:1.15; }
+  .footer-brand-name{ font-size:14px; font-weight:800; color:#d81f26; letter-spacing:0.03em; }
+  .footer-brand-sub{ font-size:9.5px; font-weight:700; color: var(--ink-faint); letter-spacing:0.1em; text-transform:uppercase; }
 
   /* ---------- Modal: nova avaliação ---------- */
   .modal-overlay{
@@ -330,7 +363,7 @@
   .slider-num{ font-family: var(--font-mono); font-size:14px; font-weight:700; color: var(--amber); }
   input[type=range]{
     width:100%; -webkit-appearance:none; height:6px; border-radius:999px;
-    background: rgba(255,255,255,0.08); outline:none;
+    background: rgba(15,23,42,0.1); outline:none;
   }
   input[type=range]::-webkit-slider-thumb{
     -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
@@ -351,47 +384,52 @@
   /* ---------- Cartão de exportação (fora da tela, usado só p/ gerar a imagem) ---------- */
   .export-wrap{ position:fixed; left:-9999px; top:0; }
   .export-card{
-    width: 720px;
-    background: linear-gradient(160deg, #0d1119, #0a0d13);
-    padding: 44px 40px 36px;
+    width: 1000px;
+    background: #ffffff;
+    padding: 34px 40px 30px;
     font-family: var(--font-display);
     color: var(--ink);
   }
-  .export-brandrow{ display:flex; align-items:center; gap:10px; margin-bottom:28px; }
-  .export-brandmark{
-    width:34px; height:34px; border-radius:9px;
-    background: linear-gradient(140deg, var(--amber), #c9791a);
-    display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-size:15px; color:#1a1206;
-  }
-  .export-brandname{ font-size:13px; letter-spacing:0.08em; color: var(--ink-dim); text-transform:uppercase; font-weight:700; }
-  .export-eyebrow{ font-family: var(--font-mono); font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color: var(--teal); margin:0 0 8px; text-align:center; }
-  .export-title{ font-size:20px; font-weight:800; text-align:center; margin:0 0 30px; }
+  .export-title{ font-size:19px; font-weight:800; text-align:center; margin:0 0 26px; letter-spacing:0.01em; }
 
-  .export-photo-row{ display:flex; flex-direction:column; align-items:center; margin-bottom:26px; }
+  .export-grid{ display:grid; grid-template-columns: 230px 1fr; gap:30px; align-items:start; }
+
   .export-photo{
-    width:150px; height:150px; border-radius:24px; overflow:hidden;
-    background: linear-gradient(150deg, rgba(245,166,35,0.16), rgba(45,212,191,0.12));
-    border: 2px solid rgba(255,255,255,0.14);
+    width:150px; height:150px; border-radius:50%; overflow:hidden;
+    background: linear-gradient(150deg, rgba(245,166,35,0.16), rgba(22,163,126,0.12));
+    border: 3px solid rgba(15,23,42,0.1);
     display:flex; align-items:center; justify-content:center;
-    margin-bottom:16px;
+    margin:0 auto 14px;
   }
   .export-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .export-photo-placeholder{ font-size:46px; font-weight:800; color: var(--ink-faint); }
-  .export-name{ font-size:22px; font-weight:800; margin:0 0 4px; text-align:center; }
-  .export-role{ font-size:13px; color: var(--teal); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin:0; }
+  .export-photo-placeholder{ font-size:44px; font-weight:800; color: var(--ink-faint); }
+  .export-name{ font-size:16px; font-weight:800; margin:0 0 2px; text-align:center; text-transform:uppercase; }
+  .export-role{ font-size:12px; color: var(--ink-dim); font-weight:700; text-align:center; margin:0 0 22px; }
 
-  .export-stats{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:30px; }
-  .export-stat{ border-radius:16px; padding:18px; text-align:center; border:1px solid var(--panel-border); }
-  .export-stat.total{ background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.28); }
-  .export-stat.media{ background: rgba(45,212,191,0.09); border-color: rgba(45,212,191,0.32); }
-  .export-stat-label{ font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color: var(--ink-faint); font-weight:700; margin:0 0 8px; }
-  .export-stat-value{ font-family: var(--font-mono); font-size:34px; font-weight:800; }
-  .export-stat.total .export-stat-value{ color: var(--amber); }
-  .export-stat.media .export-stat-value{ color: var(--teal); }
+  .export-stats{ display:flex; flex-direction:column; gap:12px; }
+  .export-stat{ border-radius:12px; overflow:hidden; border:1px solid var(--panel-border); }
+  .export-stat-badge{ text-align:center; padding:7px; font-size:10px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color:#fff; }
+  .export-stat.total .export-stat-badge{ background:#16181d; }
+  .export-stat.media .export-stat-badge{ background: var(--good); }
+  .export-stat-value{ font-family: var(--font-mono); font-size:26px; font-weight:800; text-align:center; padding:12px; background:#fff; }
+  .export-stat.total .export-stat-value{ color:#16181d; }
+  .export-stat.media .export-stat-value{ color: var(--good); }
 
-  .export-chart-title{ font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color: var(--ink-dim); font-weight:700; margin:0 0 18px; text-align:center; }
-  .export-footer{ text-align:center; margin-top:30px; font-size:11px; color: var(--ink-faint); letter-spacing:0.06em; font-family: var(--font-mono); text-transform:uppercase; }
+  .export-chart-title{ font-size:14px; letter-spacing:0.03em; color: var(--ink); font-weight:800; margin:0 0 18px; text-align:center; }
+  .export-chart-axis{ display:grid; grid-template-columns: 160px 1fr 34px; gap:12px; margin: 2px 0 16px; }
+  .export-chart-axis-labels{ display:flex; justify-content:space-between; font-family: var(--font-mono); font-size:10.5px; color: var(--ink-faint); padding-top:4px; border-top:1px solid var(--panel-border); }
+  .export-legend{ display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-top:14px; padding-top:14px; border-top:1px solid var(--panel-border); }
+  .export-legend-item{ display:flex; align-items:center; gap:6px; font-size:10px; font-weight:700; color: var(--ink-dim); text-transform:uppercase; letter-spacing:0.02em; }
+  .export-legend-dot{ width:8px; height:8px; border-radius:50%; }
+  .export-mood-row{ display:flex; justify-content:space-between; margin-top:16px; padding:0 4px; font-size:22px; }
+  .export-mood-gradient{ height:9px; border-radius:999px; margin-top:8px; position:relative; background: linear-gradient(90deg, #e0433f, #f2994a, #f2c94c, #8bc34a, #2e9e50); }
+  .export-mood-marker{ position:absolute; top:50%; width:14px; height:14px; border-radius:50%; background:#fff; border:3px solid #171b23; transform: translate(-50%,-50%); }
+
+  .export-footer{ display:flex; align-items:center; justify-content:flex-end; gap:9px; margin-top:26px; }
+  .export-footer-mark{ width:26px; height:26px; border-radius:6px; background: linear-gradient(160deg, #d81f26, #16233f); }
+  .export-footer-text{ text-align:left; line-height:1.1; }
+  .export-footer-name{ font-size:13px; font-weight:800; color:#d81f26; }
+  .export-footer-sub{ font-size:8.5px; font-weight:700; color: var(--ink-faint); letter-spacing:0.08em; text-transform:uppercase; }
 
   .share-btn{
     display:flex; align-items:center; justify-content:center; gap:8px;
@@ -503,7 +541,7 @@
               <img id="photo-img" style="display:none;">
               <button class="photo-upload-btn" id="photo-upload-btn" style="display:none;">Enviar foto</button>
             </div>
-            <p class="photo-error" id="photo-error" style="display:none; color:#f4a1a6; font-size:11px; font-family: var(--font-mono); margin:8px 0 0;"></p>
+            <p class="photo-error" id="photo-error" style="display:none; color:#b3261e; font-size:11px; font-family: var(--font-mono); margin:8px 0 0;"></p>
             <p class="vendor-name" id="res-nome">—</p>
             <p class="vendor-role" id="res-cargo">Consultor de Vendas</p>
             <p class="vendor-doc" id="res-cpf">—</p>
@@ -511,15 +549,19 @@
           </div>
 
           <div class="stat-card">
-            <p class="stat-label">Total de avaliações</p>
-            <div class="stat-value amber" id="res-total">0</div>
-            <div class="stat-sub" id="res-total-sub">nenhuma avaliação registrada</div>
+            <div class="stat-badge total">Total de avaliações</div>
+            <div class="stat-body">
+              <div class="stat-value amber" id="res-total">0</div>
+              <div class="stat-sub" id="res-total-sub">nenhuma avaliação registrada</div>
+            </div>
           </div>
 
           <div class="stat-card">
-            <p class="stat-label">Média geral</p>
-            <div class="stat-value teal" id="res-media">—</div>
-            <div class="stat-sub">escala de 0 a 10</div>
+            <div class="stat-badge media">Média geral</div>
+            <div class="stat-body">
+              <div class="stat-value teal" id="res-media">—</div>
+              <div class="stat-sub">escala de 0 a 10</div>
+            </div>
           </div>
 
           <button class="new-eval-btn" id="btn-nova-avaliacao">+ Registrar nova avaliação</button>
@@ -528,20 +570,40 @@
         </div>
 
         <div class="col-right">
-          <p class="chart-title">Média de notas por item avaliado</p>
+          <p class="chart-title">MÉDIA DE NOTAS POR ITEM AVALIADO</p>
           <div class="chart-body" id="chart-body"></div>
+          <div class="chart-axis">
+            <div></div>
+            <div class="chart-axis-labels"><span>2,0</span><span>4,0</span><span>6,0</span><span>8,0</span><span>10,0</span></div>
+            <div></div>
+          </div>
           <div class="scale-legend">
-            <div class="scale-item"><span class="scale-dot" style="background:var(--danger)"></span> 0 – 5,9 crítico</div>
-            <div class="scale-item"><span class="scale-dot" style="background:var(--amber)"></span> 6 – 8,9 satisfatório</div>
-            <div class="scale-item"><span class="scale-dot" style="background:var(--teal)"></span> 9 – 10 excelente</div>
+            <div class="scale-item"><span class="scale-dot" style="background:#e0433f"></span>Insatisfatório</div>
+            <div class="scale-item"><span class="scale-dot" style="background:#f2994a"></span>Regular</div>
+            <div class="scale-item"><span class="scale-dot" style="background:#f2c94c"></span>Bom</div>
+            <div class="scale-item"><span class="scale-dot" style="background:#8bc34a"></span>Ótimo</div>
+            <div class="scale-item"><span class="scale-dot" style="background:#2e9e50"></span>Excelente</div>
+          </div>
+          <div class="mood-row">
+            <span>😠</span><span>🙁</span><span>😐</span><span>🙂</span><span>😄</span>
+          </div>
+          <div class="mood-gradient">
+            <div class="mood-marker" id="mood-marker" style="left:50%;"></div>
           </div>
         </div>
       </div>
 
-      <div class="footer-brand">Sistema de Indicador de Desempenho · <b>GS Tech Solutions</b></div>
+      <div class="footer-brand">
+        <div class="footer-logo-mark"></div>
+        <div class="footer-brand-text">
+          <div class="footer-brand-name">ALVORADA MOTOS</div>
+          <div class="footer-brand-sub">100% Maranhense</div>
+        </div>
+      </div>
     </section>
   </main>
 </div>
+
 
 <!-- =================== MODAL: NOVA AVALIAÇÃO =================== -->
 <div class="modal-overlay" id="modal-overlay">
@@ -559,36 +621,56 @@
 <!-- =================== CARTÃO DE EXPORTAÇÃO (oculto, usado só para gerar a imagem) =================== -->
 <div class="export-wrap">
   <div class="export-card" id="export-card">
-    <div class="export-brandrow">
-      <div class="export-brandmark">GS</div>
-      <div class="export-brandname">Indicador de Desempenho</div>
-    </div>
-    <p class="export-eyebrow">Resultado geral do indicador de desempenho</p>
+    <p class="export-title">RESULTADO GERAL DO INDICADOR DE DESEMPENHO</p>
 
-    <div class="export-photo-row">
-      <div class="export-photo" id="export-photo">
-        <span class="export-photo-placeholder" id="export-photo-initials">—</span>
-        <img id="export-photo-img" style="display:none;">
+    <div class="export-grid">
+      <div>
+        <div class="export-photo" id="export-photo">
+          <span class="export-photo-placeholder" id="export-photo-initials">—</span>
+          <img id="export-photo-img" style="display:none;">
+        </div>
+        <p class="export-name" id="export-nome">—</p>
+        <p class="export-role" id="export-cargo">Consultor de Vendas</p>
+
+        <div class="export-stats">
+          <div class="export-stat total">
+            <div class="export-stat-badge">Total de avaliações</div>
+            <div class="export-stat-value" id="export-total">0</div>
+          </div>
+          <div class="export-stat media">
+            <div class="export-stat-badge">Média geral</div>
+            <div class="export-stat-value" id="export-media">—</div>
+          </div>
+        </div>
       </div>
-      <p class="export-name" id="export-nome">—</p>
-      <p class="export-role" id="export-cargo">Consultor de Vendas</p>
+
+      <div>
+        <p class="export-chart-title">MÉDIA DE NOTAS POR ITEM AVALIADO</p>
+        <div id="export-chart-body"></div>
+        <div class="export-chart-axis">
+          <div></div>
+          <div class="export-chart-axis-labels"><span>2,0</span><span>4,0</span><span>6,0</span><span>8,0</span><span>10,0</span></div>
+          <div></div>
+        </div>
+        <div class="export-legend">
+          <div class="export-legend-item"><span class="export-legend-dot" style="background:#e0433f"></span>Insatisfatório</div>
+          <div class="export-legend-item"><span class="export-legend-dot" style="background:#f2994a"></span>Regular</div>
+          <div class="export-legend-item"><span class="export-legend-dot" style="background:#f2c94c"></span>Bom</div>
+          <div class="export-legend-item"><span class="export-legend-dot" style="background:#8bc34a"></span>Ótimo</div>
+          <div class="export-legend-item"><span class="export-legend-dot" style="background:#2e9e50"></span>Excelente</div>
+        </div>
+        <div class="export-mood-row"><span>😠</span><span>🙁</span><span>😐</span><span>🙂</span><span>😄</span></div>
+        <div class="export-mood-gradient"><div class="export-mood-marker" id="export-mood-marker" style="left:50%;"></div></div>
+      </div>
     </div>
 
-    <div class="export-stats">
-      <div class="export-stat total">
-        <p class="export-stat-label">Total de avaliações</p>
-        <div class="export-stat-value" id="export-total">0</div>
-      </div>
-      <div class="export-stat media">
-        <p class="export-stat-label">Média geral</p>
-        <div class="export-stat-value" id="export-media">—</div>
+    <div class="export-footer">
+      <div class="export-footer-mark"></div>
+      <div class="export-footer-text">
+        <div class="export-footer-name">ALVORADA MOTOS</div>
+        <div class="export-footer-sub">100% Maranhense</div>
       </div>
     </div>
-
-    <p class="export-chart-title">Média de notas por item avaliado</p>
-    <div id="export-chart-body"></div>
-
-    <div class="export-footer">Sistema de Indicador de Desempenho · GS Tech Solutions</div>
   </div>
 </div>
 
@@ -868,8 +950,10 @@
     exportTotal: document.getElementById("export-total"),
     exportMedia: document.getElementById("export-media"),
     exportChartBody: document.getElementById("export-chart-body"),
+    exportMoodMarker: document.getElementById("export-mood-marker"),
 
     chartBody: document.getElementById("chart-body"),
+    moodMarker: document.getElementById("mood-marker"),
 
     btnNovaAvaliacao: document.getElementById("btn-nova-avaliacao"),
     modalOverlay: document.getElementById("modal-overlay"),
@@ -886,10 +970,10 @@
     return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
   }
 
-  function corParaNota(v){
-    if(v >= 9) return "high";
-    if(v < 6) return "low";
-    return "";
+  function larguraBarraPct(valor){
+    // eixo do gráfico vai de 2,0 a 10,0 (igual à referência visual)
+    if(valor === null) return 0;
+    return Math.max(0, Math.min(100, ((valor - 2) / 8) * 100));
   }
 
   function iniciais(nome){
@@ -897,6 +981,12 @@
     if(partes.length === 0) return "?";
     if(partes.length === 1) return partes[0][0].toUpperCase();
     return (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
+  }
+
+  function posicaoMoodPct(valor){
+    // escala de humor de 0 a 10 (0 = insatisfeito, 10 = excelente)
+    if(valor === null) return 50;
+    return Math.max(2, Math.min(98, (valor / 10) * 100));
   }
 
   function renderChart(medias){
@@ -913,7 +1003,7 @@
       const track = document.createElement("div");
       track.className = "bar-track";
       const fill = document.createElement("div");
-      fill.className = "bar-fill" + (valor !== null ? " " + corParaNota(valor) : "");
+      fill.className = "bar-fill";
       track.appendChild(fill);
 
       const valEl = document.createElement("div");
@@ -927,7 +1017,7 @@
 
       requestAnimationFrame(() => {
         setTimeout(() => {
-          fill.style.width = valor !== null ? Math.max(0, Math.min(100, valor*10)) + "%" : "0%";
+          fill.style.width = larguraBarraPct(valor) + "%";
         }, 30);
       });
     });
@@ -966,6 +1056,9 @@
     el.photoError.style.display = "none";
 
     renderChart(resumo.medias);
+    if(el.moodMarker){
+      el.moodMarker.style.left = posicaoMoodPct(resumo.mediaGeral) + "%";
+    }
   }
 
   function irParaResultado(){
@@ -1256,9 +1349,9 @@
       const track = document.createElement("div");
       track.className = "bar-track";
       const fill = document.createElement("div");
-      fill.className = "bar-fill" + (valor !== null ? " " + corParaNota(valor) : "");
+      fill.className = "bar-fill";
       fill.style.transition = "none";
-      fill.style.width = (valor !== null ? Math.max(0, Math.min(100, valor*10)) : 0) + "%";
+      fill.style.width = larguraBarraPct(valor) + "%";
       track.appendChild(fill);
 
       const valEl = document.createElement("div");
@@ -1289,6 +1382,9 @@
     el.exportTotal.textContent = resumoAtual.total;
     el.exportMedia.textContent = resumoAtual.mediaGeral !== null ? resumoAtual.mediaGeral.toFixed(1).replace(".", ",") : "—";
     renderExportChart(resumoAtual.medias);
+    if(el.exportMoodMarker){
+      el.exportMoodMarker.style.left = posicaoMoodPct(resumoAtual.mediaGeral) + "%";
+    }
   }
 
   function slugNomeArquivo(nome){
@@ -1301,7 +1397,7 @@
     await new Promise(r => setTimeout(r, 120));
 
     const canvas = await html2canvas(el.exportCard, {
-      backgroundColor: "#0a0d13",
+      backgroundColor: "#ffffff",
       scale: 2,
       useCORS: true,
     });
