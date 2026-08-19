@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
     --bg: #0b0f16;
@@ -347,6 +348,60 @@
 
   input[type=file]{ display:none; }
 
+  /* ---------- Cartão de exportação (fora da tela, usado só p/ gerar a imagem) ---------- */
+  .export-wrap{ position:fixed; left:-9999px; top:0; }
+  .export-card{
+    width: 720px;
+    background: linear-gradient(160deg, #0d1119, #0a0d13);
+    padding: 44px 40px 36px;
+    font-family: var(--font-display);
+    color: var(--ink);
+  }
+  .export-brandrow{ display:flex; align-items:center; gap:10px; margin-bottom:28px; }
+  .export-brandmark{
+    width:34px; height:34px; border-radius:9px;
+    background: linear-gradient(140deg, var(--amber), #c9791a);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:15px; color:#1a1206;
+  }
+  .export-brandname{ font-size:13px; letter-spacing:0.08em; color: var(--ink-dim); text-transform:uppercase; font-weight:700; }
+  .export-eyebrow{ font-family: var(--font-mono); font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color: var(--teal); margin:0 0 8px; text-align:center; }
+  .export-title{ font-size:20px; font-weight:800; text-align:center; margin:0 0 30px; }
+
+  .export-photo-row{ display:flex; flex-direction:column; align-items:center; margin-bottom:26px; }
+  .export-photo{
+    width:150px; height:150px; border-radius:24px; overflow:hidden;
+    background: linear-gradient(150deg, rgba(245,166,35,0.16), rgba(45,212,191,0.12));
+    border: 2px solid rgba(255,255,255,0.14);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:16px;
+  }
+  .export-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .export-photo-placeholder{ font-size:46px; font-weight:800; color: var(--ink-faint); }
+  .export-name{ font-size:22px; font-weight:800; margin:0 0 4px; text-align:center; }
+  .export-role{ font-size:13px; color: var(--teal); font-weight:700; text-transform:uppercase; letter-spacing:0.04em; margin:0; }
+
+  .export-stats{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:30px; }
+  .export-stat{ border-radius:16px; padding:18px; text-align:center; border:1px solid var(--panel-border); }
+  .export-stat.total{ background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.28); }
+  .export-stat.media{ background: rgba(45,212,191,0.09); border-color: rgba(45,212,191,0.32); }
+  .export-stat-label{ font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color: var(--ink-faint); font-weight:700; margin:0 0 8px; }
+  .export-stat-value{ font-family: var(--font-mono); font-size:34px; font-weight:800; }
+  .export-stat.total .export-stat-value{ color: var(--amber); }
+  .export-stat.media .export-stat-value{ color: var(--teal); }
+
+  .export-chart-title{ font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color: var(--ink-dim); font-weight:700; margin:0 0 18px; text-align:center; }
+  .export-footer{ text-align:center; margin-top:30px; font-size:11px; color: var(--ink-faint); letter-spacing:0.06em; font-family: var(--font-mono); text-transform:uppercase; }
+
+  .share-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; background: transparent; border:1px solid rgba(245,166,35,0.35); color: var(--amber);
+    border-radius: var(--radius-sm); padding: 13px; font-weight:700; font-size:13px; cursor:pointer;
+    font-family: var(--font-display); margin-top:10px; transition: all .15s ease;
+  }
+  .share-btn:hover{ background: rgba(245,166,35,0.08); }
+  .share-btn:disabled{ opacity:.5; cursor:not-allowed; }
+
   @media (max-width: 860px){
     .result-grid{ grid-template-columns: 1fr; padding: 14px 18px 30px; }
     .result-header{ padding: 20px 18px 6px; }
@@ -468,6 +523,7 @@
           </div>
 
           <button class="new-eval-btn" id="btn-nova-avaliacao">+ Registrar nova avaliação</button>
+          <button class="share-btn" id="btn-compartilhar">⇩ Compartilhar resultado (JPEG)</button>
         </div>
 
         <div class="col-right">
@@ -496,6 +552,42 @@
       <button class="btn-secondary" id="btn-cancelar-avaliacao">Cancelar</button>
       <button class="btn-primary" id="btn-salvar-avaliacao">Salvar avaliação</button>
     </div>
+  </div>
+</div>
+
+<!-- =================== CARTÃO DE EXPORTAÇÃO (oculto, usado só para gerar a imagem) =================== -->
+<div class="export-wrap">
+  <div class="export-card" id="export-card">
+    <div class="export-brandrow">
+      <div class="export-brandmark">GS</div>
+      <div class="export-brandname">Indicador de Desempenho</div>
+    </div>
+    <p class="export-eyebrow">Resultado geral do indicador de desempenho</p>
+
+    <div class="export-photo-row">
+      <div class="export-photo" id="export-photo">
+        <span class="export-photo-placeholder" id="export-photo-initials">—</span>
+        <img id="export-photo-img" style="display:none;">
+      </div>
+      <p class="export-name" id="export-nome">—</p>
+      <p class="export-role" id="export-cargo">Consultor de Vendas</p>
+    </div>
+
+    <div class="export-stats">
+      <div class="export-stat total">
+        <p class="export-stat-label">Total de avaliações</p>
+        <div class="export-stat-value" id="export-total">0</div>
+      </div>
+      <div class="export-stat media">
+        <p class="export-stat-label">Média geral</p>
+        <div class="export-stat-value" id="export-media">—</div>
+      </div>
+    </div>
+
+    <p class="export-chart-title">Média de notas por item avaliado</p>
+    <div id="export-chart-body"></div>
+
+    <div class="export-footer">Sistema de Indicador de Desempenho · GS Tech Solutions</div>
   </div>
 </div>
 
@@ -725,6 +817,7 @@
      ESTADO DA TELA
   ================================================================== */
   let vendedorAtual = null;
+  let resumoAtual = null;
 
   const el = {
     campoBusca: document.getElementById("campo-busca"),
@@ -762,6 +855,17 @@
     photoUploadBtn: document.getElementById("photo-upload-btn"),
     photoError: document.getElementById("photo-error"),
     fileFoto: document.getElementById("file-foto"),
+
+    btnCompartilhar: document.getElementById("btn-compartilhar"),
+    exportCard: document.getElementById("export-card"),
+    exportPhoto: document.getElementById("export-photo"),
+    exportPhotoInitials: document.getElementById("export-photo-initials"),
+    exportPhotoImg: document.getElementById("export-photo-img"),
+    exportNome: document.getElementById("export-nome"),
+    exportCargo: document.getElementById("export-cargo"),
+    exportTotal: document.getElementById("export-total"),
+    exportMedia: document.getElementById("export-media"),
+    exportChartBody: document.getElementById("export-chart-body"),
 
     chartBody: document.getElementById("chart-body"),
 
@@ -829,6 +933,7 @@
 
   function renderVendedor(vendedor, resumo){
     vendedorAtual = vendedor;
+    resumoAtual = resumo;
 
     el.resNomeTopo.textContent = vendedor.nome.toUpperCase();
     el.resNome.textContent = vendedor.nome;
@@ -847,12 +952,14 @@
       el.photoImg.src = vendedor.foto;
       el.photoImg.style.display = "block";
       el.photoInitials.style.display = "none";
-      el.photoUploadBtn.style.display = "none";
+      el.photoUploadBtn.style.display = "block";
+      el.photoUploadBtn.textContent = "Trocar foto";
     } else {
       el.photoImg.style.display = "none";
       el.photoInitials.style.display = "block";
       el.photoInitials.textContent = iniciais(vendedor.nome);
       el.photoUploadBtn.style.display = "block";
+      el.photoUploadBtn.textContent = "Enviar foto";
     }
     el.photoError.style.display = "none";
 
@@ -969,7 +1076,8 @@
       el.photoImg.src = dataUrl;
       el.photoImg.style.display = "block";
       el.photoInitials.style.display = "none";
-      el.photoUploadBtn.style.display = "none";
+      el.photoUploadBtn.style.display = "block";
+      el.photoUploadBtn.textContent = "Trocar foto";
       vendedorAtual.foto = dataUrl;
       try{
         await salvarFoto(vendedorAtual.id, dataUrl);
@@ -1121,6 +1229,126 @@
       el.btnImportar.disabled = false;
       el.btnImportar.textContent = "⇪ Importar planilha (Excel/CSV)";
       el.filePlanilha.value = "";
+    }
+  });
+
+  /* ---------- compartilhar resultado como imagem (JPEG) ---------- */
+  function iniciaisExport(nome){
+    const partes = (nome||"").trim().split(/\s+/).filter(Boolean);
+    if(partes.length === 0) return "?";
+    if(partes.length === 1) return partes[0][0].toUpperCase();
+    return (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
+  }
+
+  function renderExportChart(medias){
+    el.exportChartBody.innerHTML = "";
+    INDICADORES.forEach(ind => {
+      const valor = medias[ind.key];
+      const row = document.createElement("div");
+      row.className = "bar-row";
+
+      const label = document.createElement("div");
+      label.className = "bar-label";
+      label.textContent = ind.label;
+
+      const track = document.createElement("div");
+      track.className = "bar-track";
+      const fill = document.createElement("div");
+      fill.className = "bar-fill" + (valor !== null ? " " + corParaNota(valor) : "");
+      fill.style.transition = "none";
+      fill.style.width = (valor !== null ? Math.max(0, Math.min(100, valor*10)) : 0) + "%";
+      track.appendChild(fill);
+
+      const valEl = document.createElement("div");
+      valEl.className = "bar-value";
+      valEl.textContent = valor !== null ? valor.toFixed(1).replace(".", ",") : "—";
+
+      row.appendChild(label);
+      row.appendChild(track);
+      row.appendChild(valEl);
+      el.exportChartBody.appendChild(row);
+    });
+  }
+
+  function popularCartaoExportacao(){
+    el.exportNome.textContent = vendedorAtual.nome;
+    el.exportCargo.textContent = vendedorAtual.cargo || "Consultor de Vendas";
+
+    if(vendedorAtual.foto){
+      el.exportPhotoImg.src = vendedorAtual.foto;
+      el.exportPhotoImg.style.display = "block";
+      el.exportPhotoInitials.style.display = "none";
+    } else {
+      el.exportPhotoImg.style.display = "none";
+      el.exportPhotoInitials.style.display = "block";
+      el.exportPhotoInitials.textContent = iniciaisExport(vendedorAtual.nome);
+    }
+
+    el.exportTotal.textContent = resumoAtual.total;
+    el.exportMedia.textContent = resumoAtual.mediaGeral !== null ? resumoAtual.mediaGeral.toFixed(1).replace(".", ",") : "—";
+    renderExportChart(resumoAtual.medias);
+  }
+
+  function slugNomeArquivo(nome){
+    return (nome||"resultado").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+  }
+
+  el.btnCompartilhar.addEventListener("click", async () => {
+    if(!vendedorAtual || !resumoAtual) return;
+    el.btnCompartilhar.disabled = true;
+    el.btnCompartilhar.textContent = "Gerando imagem…";
+
+    try{
+      popularCartaoExportacao();
+      // pequena espera para garantir que a foto (se houver) já carregou antes de capturar
+      await new Promise(r => setTimeout(r, 120));
+
+      const canvas = await html2canvas(el.exportCard, {
+        backgroundColor: "#0a0d13",
+        scale: 2,
+        useCORS: true,
+      });
+
+      const nomeArquivo = "resultado-" + slugNomeArquivo(vendedorAtual.nome) + ".jpg";
+
+      canvas.toBlob(async (blob) => {
+        if(!blob){
+          el.btnCompartilhar.disabled = false;
+          el.btnCompartilhar.textContent = "⇩ Compartilhar resultado (JPEG)";
+          return;
+        }
+
+        const file = new File([blob], nomeArquivo, { type: "image/jpeg" });
+
+        if(navigator.canShare && navigator.canShare({ files: [file] })){
+          try{
+            await navigator.share({
+              files: [file],
+              title: "Resultado — " + vendedorAtual.nome,
+              text: "Indicador de Desempenho — " + vendedorAtual.nome,
+            });
+          }catch(shareErr){
+            // usuário cancelou o compartilhamento — sem problema
+          }
+        } else {
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = nomeArquivo;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+        }
+
+        el.btnCompartilhar.disabled = false;
+        el.btnCompartilhar.textContent = "⇩ Compartilhar resultado (JPEG)";
+      }, "image/jpeg", 0.92);
+
+    }catch(err){
+      console.error("Erro ao gerar imagem:", err);
+      alert("Não foi possível gerar a imagem agora.");
+      el.btnCompartilhar.disabled = false;
+      el.btnCompartilhar.textContent = "⇩ Compartilhar resultado (JPEG)";
     }
   });
 
