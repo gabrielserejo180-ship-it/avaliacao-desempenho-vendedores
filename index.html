@@ -854,9 +854,10 @@
     INDICADORES.forEach(ind => medias[ind.key] = null);
 
     if(total > 0){
+      // usa somente a avaliação mais recente — não faz média com o histórico
+      const ultima = avals[avals.length - 1];
       INDICADORES.forEach(ind => {
-        const soma = avals.reduce((acc,a) => acc + (Number(a[ind.key]) || 0), 0);
-        medias[ind.key] = soma / total;
+        medias[ind.key] = Number(ultima[ind.key]) || 0;
       });
       const somaGeral = INDICADORES.reduce((acc,ind) => acc + (medias[ind.key]||0), 0);
       mediaGeral = somaGeral / INDICADORES.length;
