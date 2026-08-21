@@ -466,12 +466,14 @@
 
   .export-photo{
     width:150px; height:150px; border-radius:50%; overflow:hidden;
-    background: linear-gradient(150deg, rgba(29,44,77,0.16), rgba(22,163,126,0.12));
+    background-color: transparent;
+    background-image: linear-gradient(150deg, rgba(29,44,77,0.16), rgba(22,163,126,0.12));
+    background-size: cover;
+    background-position: center;
     border: 3px solid rgba(15,23,42,0.1);
     display:flex; align-items:center; justify-content:center;
     margin:0 auto 14px;
   }
-  .export-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
   .export-photo-placeholder{ font-size:44px; font-weight:800; color: var(--ink-faint); }
   .export-name{ font-size:16px; font-weight:800; margin:0 0 2px; text-align:center; text-transform:uppercase; }
   .export-role{ font-size:12px; color: var(--ink-dim); font-weight:700; text-align:center; margin:0 0 22px; }
@@ -694,7 +696,6 @@
       <div>
         <div class="export-photo" id="export-photo">
           <span class="export-photo-placeholder" id="export-photo-initials">—</span>
-          <img id="export-photo-img" style="display:none;">
         </div>
         <p class="export-name" id="export-nome">—</p>
         <p class="export-role" id="export-cargo">Consultor de Vendas</p>
@@ -1009,7 +1010,6 @@
     exportCard: document.getElementById("export-card"),
     exportPhoto: document.getElementById("export-photo"),
     exportPhotoInitials: document.getElementById("export-photo-initials"),
-    exportPhotoImg: document.getElementById("export-photo-img"),
     exportNome: document.getElementById("export-nome"),
     exportCargo: document.getElementById("export-cargo"),
     exportTotal: document.getElementById("export-total"),
@@ -1483,16 +1483,32 @@
     });
   }
 
-  function popularCartaoExportacao(){
+  function precarregarImagem(dataUrl){
+    return new Promise((resolve) => {
+      const img = new Image();
+      const finalizar = () => resolve();
+      img.onload = finalizar;
+      img.onerror = finalizar;
+      img.src = dataUrl;
+      // segurança: nunca trava a geração da imagem por mais de 3s
+      setTimeout(finalizar, 3000);
+    });
+  }
+
+  async function popularCartaoExportacao(){
     el.exportNome.textContent = vendedorAtual.nome;
     el.exportCargo.textContent = vendedorAtual.cargo || "Consultor de Vendas";
 
     if(vendedorAtual.foto){
-      el.exportPhotoImg.src = vendedorAtual.foto;
-      el.exportPhotoImg.style.display = "block";
+      // pré-carrega a foto antes de aplicar como background — o html2canvas lida
+      // com background-image de forma muito mais confiável do que com uma tag
+      // <img> contendo uma foto em base64 (que às vezes falha silenciosamente)
+      await precarregarImagem(vendedorAtual.foto);
+      el.exportPhoto.style.backgroundImage =
+        "linear-gradient(150deg, rgba(29,44,77,0.16), rgba(22,163,126,0.12)), url('" + vendedorAtual.foto + "')";
       el.exportPhotoInitials.style.display = "none";
     } else {
-      el.exportPhotoImg.style.display = "none";
+      el.exportPhoto.style.backgroundImage = "";
       el.exportPhotoInitials.style.display = "block";
       el.exportPhotoInitials.textContent = iniciaisExport(vendedorAtual.nome);
     }
@@ -1509,26 +1525,9 @@
     return (nome||"resultado").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
   }
 
-  function esperarImagemCarregar(imgEl){
-    return new Promise((resolve) => {
-      if(!imgEl.src || imgEl.style.display === "none"){ resolve(); return; }
-      if(imgEl.complete && imgEl.naturalWidth > 0){ resolve(); return; }
-      const finalizar = () => {
-        imgEl.removeEventListener("load", finalizar);
-        imgEl.removeEventListener("error", finalizar);
-        resolve();
-      };
-      imgEl.addEventListener("load", finalizar);
-      imgEl.addEventListener("error", finalizar);
-      // segurança: nunca trava a geração da imagem por mais de 3s
-      setTimeout(finalizar, 3000);
-    });
-  }
-
   async function gerarImagemResultado(){
-    popularCartaoExportacao();
-    // garante que a foto (se houver) terminou de carregar de verdade antes de capturar
-    await esperarImagemCarregar(el.exportPhotoImg);
+    await popularCartaoExportacao();
+    // dá um respiro para o navegador aplicar o background antes de capturar
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const canvas = await html2canvas(el.exportCard, {
