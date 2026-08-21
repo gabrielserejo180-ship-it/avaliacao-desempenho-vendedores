@@ -878,6 +878,8 @@
       data: new Date().toISOString(),
     }, notas));
     saveDB(DB);
+    const vendedor = DB.vendedores[vendedorId] || { id: vendedorId };
+    return localCalcularResumo(vendedor);
   }
 
   /* ==================================================================
@@ -938,8 +940,8 @@
     if(CONFIG.API_URL){
       return apiCall("novaAvaliacao", { vendedorId, notas });
     }
-    localSalvarAvaliacao(vendedorId, notas);
-    return { ok: true };
+    const resumo = localSalvarAvaliacao(vendedorId, notas);
+    return { ok: true, resumo };
   }
 
   /* ==================================================================
@@ -1204,10 +1206,7 @@
       addRecente(vendedor.nome);
 
       const notas = lerNotasSliders(el.slidersBuscaWrap);
-      await salvarAvaliacao(vendedor.id, notas);
-
-      // busca de novo para já refletir a avaliação recém-lançada nos totais
-      const { resumo } = await buscarVendedor(termo);
+      const { resumo } = await salvarAvaliacao(vendedor.id, notas);
 
       el.summaryTotal.textContent = resumo.total;
       el.summaryMedia.textContent = resumo.mediaGeral !== null ? resumo.mediaGeral.toFixed(1).replace(".", ",") : "—";
@@ -1323,9 +1322,8 @@
     el.btnSalvarAvaliacao.disabled = true;
     el.btnSalvarAvaliacao.textContent = "Salvando…";
     try{
-      await salvarAvaliacao(vendedorAtual.id, notas);
-      const { vendedor, resumo } = await buscarVendedor(vendedorAtual.cpf || vendedorAtual.nome);
-      renderVendedor(vendedor, resumo);
+      const { resumo } = await salvarAvaliacao(vendedorAtual.id, notas);
+      renderVendedor(vendedorAtual, resumo);
       fecharModal();
     }catch(err){
       console.error(err);
