@@ -490,12 +490,9 @@
         <p class="search-hint">Pressione Enter para confirmar</p>
 
         <div class="manual-wrap">
-          <label class="quick-eval-toggle" for="chk-avaliacao-rapida">
-            <input type="checkbox" id="chk-avaliacao-rapida">
-            <span class="manual-label" style="margin:0;">Registrar uma avaliação agora (opcional)</span>
-          </label>
-          <p class="manual-hint">Marque para lançar uma nova avaliação (notas de 0 a 10 por item) assim que localizar o vendedor.</p>
-          <div id="sliders-busca-wrap" style="display:none; margin-top:14px;"></div>
+          <p class="manual-label">Avaliação do vendedor</p>
+          <p class="manual-hint">Ajuste as notas de 0 a 10 por item — essa avaliação é registrada junto com a consulta.</p>
+          <div id="sliders-busca-wrap" style="margin-top:14px;"></div>
         </div>
 
         <div class="search-status" id="search-status"></div>
@@ -918,7 +915,6 @@
     summaryTotal: document.getElementById("summary-total"),
     summaryMedia: document.getElementById("summary-media"),
 
-    chkAvaliacaoRapida: document.getElementById("chk-avaliacao-rapida"),
     slidersBuscaWrap: document.getElementById("sliders-busca-wrap"),
 
     btnImportar: document.getElementById("btn-importar"),
@@ -1096,15 +1092,6 @@
     return notas;
   }
 
-  el.chkAvaliacaoRapida.addEventListener("change", () => {
-    if(el.chkAvaliacaoRapida.checked){
-      construirSliders(el.slidersBuscaWrap);
-      el.slidersBuscaWrap.style.display = "block";
-    } else {
-      el.slidersBuscaWrap.style.display = "none";
-    }
-  });
-
   function irParaResultado(){
     el.screenSearch.style.display = "none";
     el.screenResult.style.display = "flex";
@@ -1116,9 +1103,7 @@
     el.campoBusca.focus();
     hideStatus();
     el.summaryCards.classList.remove("show");
-    el.chkAvaliacaoRapida.checked = false;
-    el.slidersBuscaWrap.style.display = "none";
-    el.slidersBuscaWrap.innerHTML = "";
+    construirSliders(el.slidersBuscaWrap);
   }
 
   function showStatus(msg, type){
@@ -1173,12 +1158,10 @@
       const { vendedor, novo } = await buscarVendedor(termo);
       addRecente(vendedor.nome);
 
-      if(el.chkAvaliacaoRapida.checked){
-        const notas = lerNotasSliders(el.slidersBuscaWrap);
-        await salvarAvaliacao(vendedor.id, notas);
-      }
+      const notas = lerNotasSliders(el.slidersBuscaWrap);
+      await salvarAvaliacao(vendedor.id, notas);
 
-      // busca de novo para já refletir a avaliação recém-lançada (se houver) nos totais
+      // busca de novo para já refletir a avaliação recém-lançada nos totais
       const { resumo } = await buscarVendedor(termo);
 
       el.summaryTotal.textContent = resumo.total;
@@ -1582,6 +1565,7 @@
 
   /* ---------- init ---------- */
   renderRecentes();
+  construirSliders(el.slidersBuscaWrap);
   el.campoBusca.focus();
 
 })();
