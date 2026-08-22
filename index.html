@@ -1525,6 +1525,50 @@
     return (nome||"resultado").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
   }
 
+  function desenharFotoNoCanvas(canvas, photoEl, cardEl, dataUrl, scale){
+    return new Promise((resolve) => {
+      const img = new Image();
+      const finalizar = () => resolve();
+      img.onload = () => {
+        try{
+          const cardRect = cardEl.getBoundingClientRect();
+          const photoRect = photoEl.getBoundingClientRect();
+          const x = (photoRect.left - cardRect.left) * scale;
+          const y = (photoRect.top - cardRect.top) * scale;
+          const w = photoRect.width * scale;
+          const h = photoRect.height * scale;
+
+          const ctx = canvas.getContext("2d");
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x + w / 2, y + h / 2, w / 2, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+
+          // desenha cobrindo o círculo todo, igual object-fit: cover
+          const imgRatio = img.width / img.height;
+          const boxRatio = w / h;
+          let dw, dh, dx, dy;
+          if(imgRatio > boxRatio){
+            dh = h; dw = h * imgRatio;
+            dx = x - (dw - w) / 2; dy = y;
+          } else {
+            dw = w; dh = w / imgRatio;
+            dx = x; dy = y - (dh - h) / 2;
+          }
+          ctx.drawImage(img, dx, dy, dw, dh);
+          ctx.restore();
+        }catch(e){
+          console.error("Erro ao desenhar a foto na imagem exportada:", e);
+        }
+        finalizar();
+      };
+      img.onerror = finalizar;
+      setTimeout(finalizar, 3000);
+      img.src = dataUrl;
+    });
+  }
+
   async function gerarImagemResultado(){
     await popularCartaoExportacao();
     // dá um respiro para o navegador aplicar o background antes de capturar
@@ -1536,6 +1580,12 @@
       useCORS: true,
       imageTimeout: 8000,
     });
+
+    // o html2canvas às vezes falha silenciosamente ao capturar fotos em base64
+    // dentro do cartão — desenha a foto na mão, direto por cima do canvas final
+    if(vendedorAtual.foto){
+      await desenharFotoNoCanvas(canvas, el.exportPhoto, el.exportCard, vendedorAtual.foto, 2);
+    }
 
     const nomeArquivo = "resultado-" + slugNomeArquivo(vendedorAtual.nome) + ".jpg";
     const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.92));
